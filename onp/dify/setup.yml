@@ -1,9 +1,0 @@
----
-- name: Setup dify
-  hosts: dify
-  ignore_unreachable: true
-
-  roles:
-    - ../../roles/common/vm
-    - ../../roles/middleware/docker
-    - ../../roles/middleware/dify

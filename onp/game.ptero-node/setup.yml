@@ -1,8 +1,0 @@
----
-- name: Setup game.ptero-node
-  hosts: game.ptero-node
-  ignore_unreachable: true
-
-  roles:
-    - ../../roles/common/lxc
-    - ../../roles/middleware/docker
