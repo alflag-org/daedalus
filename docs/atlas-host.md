@@ -18,6 +18,7 @@ For that host:
 ```yaml
 atlas_bootstrap_mode: manual
 atlas_role: control
+atlas_manage_scripts: false
 atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
@@ -25,13 +26,29 @@ atlas_validate_runtime: true
 Daedalus validates the active Atlas runtime and renders expected configuration,
 but it does not rebuild the active runtime by default.
 
+It also does not update Atlas scripts releases by default. Running
+`atlas scripts update` from inside the same active Daedalus release can replace
+the directory Ansible is currently executing from, which causes Ansible to fail
+after the update task with a missing file error.
+
 The `atlas.yml` playbook treats `kng01-mgmt-control-01` as an Atlas host by
 default without requiring extra inventory changes. Additional hosts should opt in
 with `atlas_enabled: true` when they are ready to be managed by this role.
 
-Future control nodes or replacement control nodes can set
-`atlas_manage_runtime: true` from host or group variables when an already-working
-control node is managing them.
+Future control nodes or replacement control nodes can set management variables
+from host or group variables when an already-working control node is managing
+them.
+
+## Scripts Release Management
+
+`atlas_manage_scripts` controls whether the role runs:
+
+```bash
+atlas scripts update
+```
+
+The default is `false`. Keep it disabled on a host that is currently running
+Daedalus from `/opt/atlas/scripts/current/daedalus`.
 
 ## Runtime Management
 
