@@ -1,0 +1,14 @@
+---
+- name: Clone daedalus.git
+  ansible.builtin.git:
+    repo: "git@github.com:alflag-org/daedalus.git"
+    dest: "~/repos/daedalus"
+    version: "master"
+    update: false
+    accept_hostkey: true
+
+- name: Create symlink to daedalus
+  ansible.builtin.file:
+    src: "~/repos/daedalus"
+    dest: "~/daedalus"
+    state: link

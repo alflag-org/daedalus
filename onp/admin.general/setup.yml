@@ -7,5 +7,5 @@
     - ../../roles/common/lxc
     - ../../roles/common/cloudflare-ssh
     - ../../roles/middleware/python3-pip
-    - ../../roles/middleware/ansible
+    - ../../roles/middleware/daedalus
     - ../../roles/middleware/docker

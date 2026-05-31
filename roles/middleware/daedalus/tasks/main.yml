@@ -1,0 +1,12 @@
+---
+- name: Clone daedalus
+  ansible.builtin.include_tasks:
+    file: git.yml
+  when:
+    - not (skip_clone_daedalus | default(skip_clone_ansible | default(false)))
+
+- name: Install Ansible runtime dependency
+  ansible.builtin.include_tasks:
+    file: install.yml
+  when:
+    - not (skip_install_ansible | default(skip_isntall_ansible | default(false)))
