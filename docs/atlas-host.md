@@ -1,0 +1,111 @@
+# Atlas Host Role
+
+`atlas_host` prepares or validates hosts that participate in Atlas-operated
+infrastructure management.
+
+The role is intentionally explicit. Daedalus owns the Ansible project,
+inventory, playbooks, roles, and the `infra` command wrapper. Atlas owns the
+script runtime, release installation, command shims, execution logs, and host
+context.
+
+## First Control Node vs Future Control Nodes
+
+`kng01-mgmt-control-01` is manually bootstrapped and already has the minimum
+runtime needed to run `atlas run infra ...`.
+
+For that host:
+
+```yaml
+atlas_bootstrap_mode: manual
+atlas_role: control
+atlas_manage_runtime: false
+atlas_validate_runtime: true
+```
+
+Daedalus validates the active Atlas runtime and renders expected configuration,
+but it does not rebuild the active runtime by default.
+
+The `atlas.yml` playbook treats `kng01-mgmt-control-01` as an Atlas host by
+default without requiring extra inventory changes. Additional hosts should opt in
+with `atlas_enabled: true` when they are ready to be managed by this role.
+
+Future control nodes or replacement control nodes can set
+`atlas_manage_runtime: true` from host or group variables when an already-working
+control node is managing them.
+
+## Runtime Management
+
+`atlas_manage_runtime` controls whether the role runs:
+
+```bash
+atlas runtime install
+```
+
+The default is `false` to avoid replacing the first manually bootstrapped
+runtime by accident.
+
+When runtime management is enabled, the role also force-reinstalls runtime
+packages with the final runtime Python as a workaround for stale console-script
+shebangs.
+
+## Runtime Validation
+
+`atlas_validate_runtime` controls checks that require a working Atlas scripts
+runtime:
+
+- `atlas runtime status`
+- runtime `ansible-inventory --version`
+- optional shebang validation
+
+`atlas_validate_shebangs` controls the shebang check. It defaults to `true`.
+
+## Temporary Directory Policy
+
+Atlas runtime builds should not rely on `/tmp`. Some Ubuntu hosts use a small
+tmpfs there.
+
+Daedalus uses:
+
+```text
+TMPDIR=/opt/atlas/tmp
+PYTHON_BUILD_CACHE_PATH=/var/lib/atlas/cache/python-build
+```
+
+The role creates those directories and writes the environment policy to the
+`ops` user's profile.
+
+## Rendered Configuration
+
+The role renders:
+
+- `/etc/atlas/config.yml`
+- `/etc/atlas/host.yml`
+
+The default Daedalus release source is:
+
+```yaml
+atlas_releases:
+  daedalus:
+    source: daedalus
+
+atlas_registries:
+  daedalus:
+    source: "git+https://github.com/alflag-org/daedalus.git#master"
+```
+
+## Validation Commands
+
+Use the wrapper through Atlas on the control node:
+
+```bash
+atlas run infra inventory --site kanagawa01
+atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+```
+
+For DNS LXC reachability and the conservative baseline role:
+
+```bash
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+```
