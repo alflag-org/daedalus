@@ -41,7 +41,10 @@ secrets/
 docs/
 ```
 
-See [docs/layout.md](docs/layout.md) for the responsibility split.
+See [docs/layout.md](docs/layout.md) for the responsibility split. See
+[docs/bootstrap-control-node.md](docs/bootstrap-control-node.md) for the first
+KANAGAWA01 control node bootstrap boundary and
+[docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role.
 
 ## Installation
 
@@ -81,6 +84,11 @@ Production execution should go through `atlas run` or the shim so Atlas can
 provide the release runtime, host context, and JSONL run log. Direct local Python
 entrypoints are for development only.
 
+The first KANAGAWA01 control node, `kng01-mgmt-control-01`, is manually
+bootstrapped. Daedalus validates that host and can manage non-dangerous
+configuration, but it does not rebuild the active Atlas runtime there by
+default.
+
 ## CLI
 
 Basic shape:
@@ -102,7 +110,7 @@ Reachability:
 
 ```bash
 infra ping
-infra ping --site kanagawa01 --limit kng01-recursive-dns-01
+infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
 ```
 
 Dry-run validation:
@@ -110,21 +118,21 @@ Dry-run validation:
 ```bash
 infra check
 infra check --site kanagawa01 --playbook baseline
-infra check --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
 ```
 
 Diff preview:
 
 ```bash
 infra diff
-infra diff --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+infra diff --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
 ```
 
 Apply is the mutating action and requires explicit confirmation:
 
 ```bash
 infra apply --yes
-infra apply --yes --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+infra apply --yes --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
 ```
 
 `check`, `diff`, and `apply` support these limited Ansible pass-through options:
@@ -224,7 +232,7 @@ python -m pip install -e .
 infra sites
 infra playbooks
 infra inventory
-infra check --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
 ```
 
 For documentation-only changes, inspect the rendered Markdown and confirm that

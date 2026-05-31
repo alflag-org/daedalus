@@ -1,0 +1,149 @@
+# First Control Node Bootstrap
+
+`kng01-mgmt-control-01` is the first KANAGAWA01 control node. It is the root of
+configuration management for the site and is intentionally bootstrapped by hand.
+
+Daedalus is Atlas-operated and Ansible-backed. It needs Atlas, an Atlas scripts
+runtime, Ansible, SSH material, and Vault password access before it can manage
+hosts. Making Daedalus build that first runtime from a blank host would create a
+circular dependency: the configuration runner would depend on itself before it
+can run.
+
+## Role
+
+`kng01-mgmt-control-01` runs operator-triggered commands such as:
+
+```bash
+atlas run infra inventory --site kanagawa01
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+```
+
+Daedalus may validate this host and manage non-dangerous configuration on it,
+but it must not rebuild or replace the active Atlas runtime by default.
+
+Future control nodes, replacement control nodes, or control nodes in other sites
+can be provisioned from an already-working control node.
+
+## Minimal Manual Bootstrap
+
+The first control node is expected to have at least:
+
+- OS installation
+- Network configuration
+- `ops` user
+- Required OS packages
+- `pyenv`
+- Atlas CLI
+- `/etc/atlas/config.yml`
+- `/etc/atlas/host.yml`
+- Daedalus release installation
+- Atlas scripts runtime
+- `ansible-core`
+- `~/.ssh/infra`
+- `ANSIBLE_VAULT_PASSWORD`
+
+## Required Paths
+
+- `/etc/atlas`
+- `/opt/atlas`
+- `/opt/atlas/tmp`
+- `/var/lib/atlas`
+- `/var/lib/atlas/cache/python-build`
+- `/home/ops/.local/bin/atlas`
+- `/home/ops/.local/share/atlas-cli-venv`
+- `/home/ops/.ssh/infra`
+
+`/opt/atlas/tmp` is the default runtime build temporary directory for this site.
+`/var/lib/atlas/cache/python-build` is the default Python build cache.
+
+## Required Secrets
+
+Do not commit plaintext secrets.
+
+The Vault password is supplied in one of two ways:
+
+- `ANSIBLE_VAULT_PASSWORD` in the operator environment
+- local, untracked `secrets/ansible_vault.env`
+
+Private SSH keys, real Vault passwords, and generated credentials must stay out
+of git.
+
+## Runtime Validation
+
+Run these commands after manual bootstrap and after changes that affect the
+runtime:
+
+```bash
+atlas status
+atlas runtime status
+atlas scripts list --verbose
+ansible-inventory --version
+atlas run infra inventory --site kanagawa01
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+```
+
+The first control node has `atlas_manage_runtime: false` by default. The Atlas
+playbook should validate the runtime without rebuilding it.
+
+## Known Failure Modes
+
+### Small `/tmp` tmpfs
+
+Ubuntu hosts may mount `/tmp` as a small tmpfs. Python runtime builds can fail
+when `/tmp` is too small.
+
+Use:
+
+```bash
+export TMPDIR=/opt/atlas/tmp
+export PYTHON_BUILD_CACHE_PATH=/var/lib/atlas/cache/python-build
+```
+
+Daedalus also writes these defaults into the `ops` profile for Atlas hosts.
+
+### Atlas Runtime Stale Shebang
+
+Atlas runtime install can leave console scripts with stale shebangs if a virtual
+environment is built in `scripts.tmp` and then renamed to the final runtime
+path.
+
+The operational workaround is to force-reinstall runtime packages with the final
+runtime Python:
+
+```bash
+/opt/atlas/runtime/python/envs/scripts/bin/python \
+  -m pip install --force-reinstall ansible-core 'fire>=0.7' PyYAML
+```
+
+The permanent fix belongs in Atlas, not in Daedalus.
+
+Atlas runtime install should:
+
+1. Create a temporary virtual environment.
+2. Rename it to the final runtime path.
+3. Run `pip install` from the final runtime Python.
+4. Run `pip check` from the final runtime Python.
+5. Validate `bin/*` shebangs.
+6. Fail closed if `scripts.tmp` appears in any console script shebang.
+
+A longer-term design should use versioned runtime directories and a symlink
+switch, for example:
+
+```text
+/opt/atlas/runtime/python/envs/scripts-<build-id>
+/opt/atlas/runtime/python/envs/scripts -> scripts-<build-id>
+```
+
+That avoids mutating the active runtime in place.
+
+### Installed Release Direct Edits
+
+`/opt/atlas/scripts/current/daedalus` is an installed release. Direct edits under
+that path are temporary and are overwritten by release updates.
+
+Persistent changes must be committed to the Daedalus repository, then installed
+or updated through Atlas.
