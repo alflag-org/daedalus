@@ -1,4 +1,5 @@
 .vault_pass
 *.egg-info/
+.ansible/
 .venv/
 __pycache__/

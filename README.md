@@ -1,50 +1,52 @@
 # Daedalus
 
-Daedalus is an Atlas script release for operator-triggered Alflag host
-configuration management. It is an Ansible-backed configuration runner, not a
-daemon and not a general-purpose orchestration service.
+Daedalus is an Atlas-operated infrastructure configuration runner for
+operator-triggered Alflag host configuration management. It is an Ansible-backed
+runner, not a daemon and not a general-purpose orchestration service.
 
 ```text
 Daedalus = Atlas-operated infrastructure configuration runner
 ```
 
-It gives operators a stable `infra` command for inventory inspection, reachability
-checks, dry-run checks, diffs, and explicit applies. Atlas owns the script runtime,
-command shims, and run logs; Daedalus owns the Ansible inventories, playbooks,
-roles, and the small command wrapper that invokes them.
+Atlas owns the script runtime, command shims, and run logs. Daedalus owns the
+Ansible backend and the small `infra` command wrapper that invokes it.
 
-## Atlas Release Layout
+## Layout
 
-Daedalus follows the Atlas script release shape:
+Daedalus keeps the Atlas release interface at the repository root:
 
 ```text
 VERSION
-commands/infra.py
-modules/alflag_infra/
+commands/
+modules/
 requirements.txt
 ```
 
-Atlas adds the release `modules/` directory to `PYTHONPATH` before running the
-command. `commands/infra.py` maps to the operator command name `infra`.
-
-The Ansible assets used by that command live in the repository as reviewable
-configuration:
+The Ansible project lives under `ansible/`:
 
 ```text
-ansible.cfg
-inventories/
-playbooks/
-roles/
-group_vars/
-vault_pass.sh
+ansible/
+  ansible.cfg
+  inventories/
+  playbooks/
+  roles/
+  collections/
 ```
 
-`infra` currently defaults to `site=kanagawa01` and `playbook=site`.
+Local operator support lives outside the Ansible project:
+
+```text
+tools/
+secrets/
+docs/
+```
+
+See [docs/layout.md](docs/layout.md) for the responsibility split.
 
 ## Installation
 
-Install Daedalus as a named Atlas script release, then install the scripts runtime
-and regenerate shims when needed:
+Install Daedalus as a named Atlas script release, then install the scripts
+runtime and regenerate shims when needed:
 
 ```bash
 atlas scripts install git+https://github.com/alflag-org/daedalus.git#master --name daedalus
@@ -88,10 +90,17 @@ infra <action> [options]
 atlas run infra <action> [options]
 ```
 
-Inventory and reachability:
+Discovery:
 
 ```bash
-infra inventory
+infra sites
+infra playbooks
+infra inventory --site kanagawa01
+```
+
+Reachability:
+
+```bash
 infra ping
 infra ping --site kanagawa01 --limit kng01-recursive-dns-01
 ```
@@ -101,6 +110,7 @@ Dry-run validation:
 ```bash
 infra check
 infra check --site kanagawa01 --playbook baseline
+infra check --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
 ```
 
 Diff preview:
@@ -110,12 +120,20 @@ infra diff
 infra diff --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
 ```
 
-Apply is the mutating action. Run `check` or `diff` first unless there is a clear
-operational reason not to.
+Apply is the mutating action and requires explicit confirmation:
 
 ```bash
-infra apply
-infra apply --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+infra apply --yes
+infra apply --yes --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
+```
+
+`check`, `diff`, and `apply` support these limited Ansible pass-through options:
+
+```text
+--limit
+--tags
+--skip-tags
+--extra-vars
 ```
 
 Before invoking Ansible, `infra` prints the exact command it will run. Unknown
@@ -123,19 +141,24 @@ sites and playbooks fail before Ansible starts.
 
 ## Configuration
 
-Daedalus uses the repository-local `ansible.cfg`. Notable defaults include:
+Daedalus uses `ansible/ansible.cfg` and executes Ansible with `ansible/` as the
+working directory. Notable defaults include:
 
 ```text
-private_key_file=~/.ssh/infra
-remote_user=ops
-vault_password_file=vault_pass.sh
-host_key_checking=False
-pipelining=True
-ssh_args=-o ForwardAgent=yes
+inventory = inventories/kanagawa01/hosts.yml
+roles_path = roles
+collections_path = collections
+private_key_file = ~/.ssh/infra
+remote_user = ops
+vault_password_file = ../tools/vault_pass.sh
+host_key_checking = False
+pipelining = True
+ssh_args = -o ForwardAgent=yes
 ```
 
-`vault_pass.sh` reads the Ansible Vault password from `ANSIBLE_VAULT_PASSWORD` or
-from a local, untracked `secrets/ansible_vault.env` file.
+`tools/vault_pass.sh` reads the Ansible Vault password from
+`ANSIBLE_VAULT_PASSWORD` or from a local, untracked
+`secrets/ansible_vault.env` file.
 
 Create the local secret file from the sample when needed:
 
@@ -149,8 +172,8 @@ Then set the value in `secrets/ansible_vault.env`:
 ANSIBLE_VAULT_PASSWORD=...
 ```
 
-Do not commit plaintext secrets. Vault-encrypted variable files under
-`group_vars/**/vault` are tracked because their contents are encrypted.
+Do not commit plaintext secrets. If Vault-encrypted variable files are needed,
+keep them under the site inventory that consumes them.
 
 ## Local Development
 
@@ -158,26 +181,25 @@ Install the Python package in editable mode when working without Atlas:
 
 ```bash
 python -m pip install -e .
+infra sites
+infra playbooks
 infra inventory
-infra ping
-infra check
 ```
 
-The local entrypoint uses the same `modules/alflag_infra` implementation as the
-Atlas command. Keep examples and operational docs centered on `atlas run infra` or
-the `infra` shim, because that is the production execution path.
+Runtime dependencies are in `requirements.txt`. Development-only tools are in
+`requirements-dev.txt`.
 
 ## Direct Ansible Execution
 
 Prefer `infra` for normal operator runs. If you need to bypass the wrapper while
-debugging Ansible itself, use the same inventory, playbook, and vault password
-file explicitly:
+debugging Ansible itself, execute from `ansible/` or set the config explicitly:
 
 ```bash
+cd ansible
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
   -i inventories/kanagawa01/hosts.yml \
   playbooks/site.yml \
-  --vault-password-file ./vault_pass.sh \
+  --vault-password-file ../tools/vault_pass.sh \
   --check --diff
 ```
 
@@ -187,22 +209,23 @@ playbook, and limit.
 ## State
 
 Daedalus does not maintain its own audit store. Atlas records script runs,
-arguments, duration, and exit codes. Keep persistent operational state in Atlas or
-in explicit reviewable artifacts, not in ad-hoc files inside this repository.
+arguments, duration, and exit codes. Keep persistent operational state in Atlas
+or in explicit reviewable artifacts, not in ad-hoc files inside this repository.
 
 Local runtime directories such as `.venv/`, `.ansible/`, and `secrets/` are
 machine-local and should not be used as shared state.
 
 ## Verification
 
-There is no separate Daedalus test suite at the moment. The narrow verification
-path for command-wrapper changes is:
+The narrow verification path for command-wrapper changes is:
 
 ```bash
 python -m pip install -e .
+infra sites
+infra playbooks
 infra inventory
 infra check --site kanagawa01 --playbook baseline --limit kng01-recursive-dns-01
 ```
 
-For documentation-only changes, inspect the rendered Markdown and confirm that the
-examples still match the current `infra` CLI and repository layout.
+For documentation-only changes, inspect the rendered Markdown and confirm that
+the examples match the current `infra` CLI and repository layout.

@@ -3,20 +3,19 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "alflag-infra"
+name = "daedalus"
 version = "0.1.0"
-description = "Alflag infrastructure configuration management commands"
+description = "Atlas-operated infrastructure configuration runner"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "ansible-core>=2.18",
-    "ansible-lint>=25.2.1",
     "fire>=0.7",
     "PyYAML>=6.0",
 ]
 
 [project.scripts]
-infra = "alflag_infra.cli:main"
+infra = "daedalus.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["modules"]

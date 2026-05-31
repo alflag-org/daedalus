@@ -1,6 +1,0 @@
----
-- name: Install Ansible runtime dependency
-  ansible.builtin.apt:
-    name:
-      - ansible
-    state: present

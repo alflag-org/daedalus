@@ -6,7 +6,7 @@ and sample files.
 
 ## Ansible Vault Password
 
-`vault_pass.sh` reads the Vault password from either:
+`tools/vault_pass.sh` reads the Vault password from either:
 
 ```text
 ANSIBLE_VAULT_PASSWORD
