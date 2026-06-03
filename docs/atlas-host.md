@@ -61,6 +61,26 @@ The role ensures:
 That lets root-connected LXC hosts converge toward the same steady state as VM
 hosts: later runs can switch to `ansible_user: ops` with `become: true`.
 
+For a brand-new VM that already has `ops`, use the shared bootstrap playbook:
+
+```bash
+infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host>
+```
+
+For a brand-new root-only LXC, use the same bootstrap playbook and override the
+first login user for that run:
+
+```bash
+infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
+  --extra-vars 'ansible_user=root ansible_become=false'
+```
+
+The playbook branches inside `common/bootstrap`: VM and LXC hosts share one
+entrypoint, and the role selects the platform-specific tasks after fact
+gathering. For the root-only LXC case, that run connects as `root`, creates and
+authorizes `ops`, installs passwordless sudo, and prepares the Atlas host
+layout. After it succeeds, switch back to the normal `atlas` playbook.
+
 ## Scripts Release Management
 
 `atlas_manage_scripts` controls whether the role runs:
