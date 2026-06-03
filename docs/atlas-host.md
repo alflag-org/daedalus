@@ -16,14 +16,18 @@ runtime needed to run `atlas run infra ...`.
 For that host:
 
 ```yaml
+atlas_bootstrap_mode: manual
 atlas_role: control
 atlas_manage_scripts: false
 atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
 
-Daedalus validates the active Atlas runtime and renders expected configuration,
-but it does not rebuild the active runtime by default.
+Daedalus validates the active Atlas runtime, but it does not rebuild or mutate
+the manually bootstrapped control node by default.
+
+In `manual` bootstrap mode, the role skips host mutation tasks and keeps the
+play focused on validation of the already-bootstrapped control node.
 
 It also does not update Atlas scripts releases by default. Running
 `atlas scripts update` from inside the same active Daedalus release can replace

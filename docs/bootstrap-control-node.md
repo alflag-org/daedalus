@@ -90,12 +90,14 @@ atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-contr
 The first control node should set these host vars:
 
 ```yaml
+atlas_bootstrap_mode: manual
 atlas_role: control
 atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
 
-The Atlas playbook should validate the runtime without rebuilding it.
+The Atlas playbook should validate the runtime without rebuilding or mutating
+the control node.
 
 ## Known Failure Modes
 
