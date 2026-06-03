@@ -168,10 +168,10 @@ ssh_args = -o ForwardAgent=yes
 `ANSIBLE_VAULT_PASSWORD` or from a local, untracked
 `secrets/ansible_vault.env` file.
 
-The steady-state connection model is `ops` plus `become`. Hosts that still need
-root for their first bootstrap can override `ansible_user` in host vars
-temporarily, but they should converge back to `ops` after the role has created
-the account, installed `~/.ssh/infra.pub`, and granted non-interactive sudo.
+The steady-state connection model is `ops` plus `become`. Hosts bootstrap
+through the single `bootstrap` playbook, then converge back to normal
+`ops`-based runs after the roles have created the account, installed
+`~/.ssh/infra.pub`, and granted non-interactive sudo.
 
 Create the local secret file from the sample when needed:
 
@@ -218,6 +218,23 @@ ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
 
 For an apply, remove `--check --diff` only after reviewing the target inventory,
 playbook, and limit.
+
+Bootstrap a cloud-init VM with:
+
+```bash
+infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host>
+```
+
+Bootstrap a root-only LXC with the same playbook, but override the first login
+user for that one run:
+
+```bash
+infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
+  --extra-vars 'ansible_user=root ansible_become=false'
+```
+
+After that first run, use the normal `atlas` or `baseline` playbooks with the
+standard `ops` connection model.
 
 ## State
 
