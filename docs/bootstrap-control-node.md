@@ -32,6 +32,7 @@ The first control node is expected to have at least:
 - OS installation
 - Network configuration
 - `ops` user
+- passwordless `sudo` for `ops`
 - Required OS packages
 - `pyenv`
 - Atlas CLI
@@ -86,8 +87,15 @@ atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-cont
 atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
 ```
 
-The first control node has `atlas_manage_runtime: false` by default. The Atlas
-playbook should validate the runtime without rebuilding it.
+The first control node should set these host vars:
+
+```yaml
+atlas_role: control
+atlas_manage_runtime: false
+atlas_validate_runtime: true
+```
+
+The Atlas playbook should validate the runtime without rebuilding it.
 
 ## Known Failure Modes
 

@@ -16,7 +16,6 @@ runtime needed to run `atlas run infra ...`.
 For that host:
 
 ```yaml
-atlas_bootstrap_mode: manual
 atlas_role: control
 atlas_manage_scripts: false
 atlas_manage_runtime: false
@@ -31,9 +30,11 @@ It also does not update Atlas scripts releases by default. Running
 the directory Ansible is currently executing from, which causes Ansible to fail
 after the update task with a missing file error.
 
-The `atlas.yml` playbook treats `kng01-mgmt-control-01` as an Atlas host by
-default without requiring extra inventory changes. Additional hosts should opt in
-with `atlas_enabled: true` when they are ready to be managed by this role.
+The `atlas.yml` playbook now applies `atlas_host` to Atlas hosts by default.
+Hosts that should be excluded can opt out with `atlas_enabled: false`.
+
+`kng01-mgmt-control-01` should declare its control-node behavior explicitly in
+host vars instead of relying on a hostname-specific fallback.
 
 Future control nodes or replacement control nodes can set management variables
 from host or group variables when an already-working control node is managing
@@ -68,7 +69,8 @@ shebangs.
 ## Runtime Validation
 
 `atlas_validate_runtime` controls checks that require a working Atlas scripts
-runtime:
+runtime. The default is `false`, because fresh hosts do not have the Atlas
+runtime yet:
 
 - `atlas runtime status`
 - runtime `ansible-inventory --version`
@@ -89,7 +91,7 @@ PYTHON_BUILD_CACHE_PATH=/var/lib/atlas/cache/python-build
 ```
 
 The role creates those directories and writes the environment policy to the
-`ops` user's profile.
+Atlas operator user's profile.
 
 ## Rendered Configuration
 
