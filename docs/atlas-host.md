@@ -23,11 +23,13 @@ atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
 
-Daedalus validates the active Atlas runtime, but it does not rebuild or mutate
-the manually bootstrapped control node by default.
+Daedalus validates the active Atlas runtime and can continue to manage the
+control node after bootstrap. `atlas_bootstrap_mode: manual` records how the
+host was introduced; it does not opt the host out of later configuration
+management.
 
-In `manual` bootstrap mode, the role skips host mutation tasks and keeps the
-play focused on validation of the already-bootstrapped control node.
+To manage a non-root Atlas operator account such as `ops`, the host still needs
+non-interactive privilege escalation for root-owned changes.
 
 It also does not update Atlas scripts releases by default. Running
 `atlas scripts update` from inside the same active Daedalus release can replace
@@ -43,6 +45,21 @@ host vars instead of relying on a hostname-specific fallback.
 Future control nodes or replacement control nodes can set management variables
 from host or group variables when an already-working control node is managing
 them.
+
+## Atlas Operator Account
+
+`atlas_host` manages Atlas under the `ops` account by default, even when the
+current Ansible connection still uses `root` for bootstrap or migration work.
+
+The role ensures:
+
+- `ops` exists
+- `ops` is in `sudo`
+- `/etc/sudoers.d/90-ops` grants non-interactive sudo
+- the controller's `~/.ssh/infra.pub` is present in `~ops/.ssh/authorized_keys`
+
+That lets root-connected LXC hosts converge toward the same steady state as VM
+hosts: later runs can switch to `ansible_user: ops` with `become: true`.
 
 ## Scripts Release Management
 

@@ -168,6 +168,11 @@ ssh_args = -o ForwardAgent=yes
 `ANSIBLE_VAULT_PASSWORD` or from a local, untracked
 `secrets/ansible_vault.env` file.
 
+The steady-state connection model is `ops` plus `become`. Hosts that still need
+root for their first bootstrap can override `ansible_user` in host vars
+temporarily, but they should converge back to `ops` after the role has created
+the account, installed `~/.ssh/infra.pub`, and granted non-interactive sudo.
+
 Create the local secret file from the sample when needed:
 
 ```bash

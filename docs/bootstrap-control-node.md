@@ -96,8 +96,12 @@ atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
 
-The Atlas playbook should validate the runtime without rebuilding or mutating
-the control node.
+The Atlas playbook should be able to manage the control node after bootstrap.
+`atlas_bootstrap_mode: manual` records that the first install was done by hand;
+it does not disable later configuration management.
+
+For an `ops`-managed control node, make sure `ops` has passwordless `sudo` so
+Ansible can apply root-owned changes non-interactively.
 
 ## Known Failure Modes
 
