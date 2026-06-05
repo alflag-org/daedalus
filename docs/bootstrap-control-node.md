@@ -16,7 +16,7 @@ can run.
 ```bash
 atlas run infra inventory --site kanagawa01
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --limit cap_control_node
 ```
 
 Daedalus may validate this host and manage non-dangerous configuration on it,
@@ -82,21 +82,30 @@ atlas scripts list --verbose
 ansible-inventory --version
 atlas run infra inventory --site kanagawa01
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
-atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra check --site kanagawa01 --limit svc_dns_recursive
+atlas run infra check --site kanagawa01 --limit cap_control_node
+atlas run infra diff --site kanagawa01 --limit cap_control_node
 ```
 
-The first control node should set these host vars:
+The first control node should be assigned to these inventory groups:
+
+```yaml
+provider_proxmox:
+platform_vm:
+cap_atlas_host:
+cap_control_node:
+```
+
+The per-host vars remain:
 
 ```yaml
 atlas_bootstrap_mode: manual
 atlas_role: control
-atlas_manage_runtime: false
 atlas_validate_runtime: true
 ```
 
-The Atlas playbook should be able to manage the control node after bootstrap.
+The default `site` converge should be able to manage the control node after
+bootstrap.
 `atlas_bootstrap_mode: manual` records that the first install was done by hand;
 it does not disable later configuration management.
 
