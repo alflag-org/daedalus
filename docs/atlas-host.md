@@ -36,8 +36,10 @@ It also does not update Atlas scripts releases by default. Running
 the directory Ansible is currently executing from, which causes Ansible to fail
 after the update task with a missing file error.
 
-The `atlas.yml` playbook now applies `atlas_host` to Atlas hosts by default.
-Hosts that should be excluded can opt out with `atlas_enabled: false`.
+Atlas hosts are now selected through the `cap_atlas_host` inventory group, and
+control nodes are selected through `cap_control_node`. The public `site`
+playbook imports the control-plane component internally; operators do not need a
+separate Atlas-specific playbook for steady-state runs.
 
 `kng01-mgmt-control-01` should declare its control-node behavior explicitly in
 host vars instead of relying on a hostname-specific fallback.
@@ -79,7 +81,7 @@ The playbook branches inside `common/bootstrap`: VM and LXC hosts share one
 entrypoint, and the role selects the platform-specific tasks after fact
 gathering. For the root-only LXC case, that run connects as `root`, creates and
 authorizes `ops`, installs passwordless sudo, and prepares the Atlas host
-layout. After it succeeds, switch back to the normal `atlas` playbook.
+layout. After it succeeds, switch back to the normal `site` converge.
 
 ## Scripts Release Management
 
@@ -159,13 +161,13 @@ Use the wrapper through Atlas on the control node:
 
 ```bash
 atlas run infra inventory --site kanagawa01
-atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
-atlas run infra diff --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra check --site kanagawa01 --limit cap_control_node
+atlas run infra diff --site kanagawa01 --limit cap_control_node
 ```
 
-For DNS LXC reachability and the conservative baseline role:
+For DNS LXC reachability and the service-scoped converge path:
 
 ```bash
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --limit svc_dns_recursive
 ```

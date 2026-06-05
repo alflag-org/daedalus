@@ -4,12 +4,16 @@ Use Atlas or the generated `infra` shim for production runs:
 
 ```bash
 atlas run infra check
-atlas run infra diff --site kanagawa01 --playbook baseline
-atlas run infra apply --yes --site kanagawa01 --playbook baseline
+atlas run infra diff --site kanagawa01 --limit cap_control_node
+atlas run infra apply --yes --site kanagawa01 --limit svc_dns_recursive
 ```
 
 Use `infra sites` and `infra playbooks` before targeting a non-default site or
-playbook.
+public playbook entrypoint.
+
+Normal steady-state runs should use the default `site` playbook and narrow the
+target with `--limit <inventory-group-or-host>` when needed. Reserve
+`--playbook bootstrap` for first converge on a newly added Atlas-managed host.
 
 `apply` is the only mutating action and requires `--yes`. Run `check` or `diff`
 first unless there is a clear operational reason not to.

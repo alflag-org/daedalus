@@ -18,7 +18,17 @@ ansible/
   ansible.cfg
   inventories/
   playbooks/
+    site.yml
+    bootstrap.yml
+    components/
+    compat/
   roles/
+    foundation/
+    control/
+    services/
+    legacy/
+    common/        # transitional implementation details
+    middleware/    # transitional implementation details
   collections/
 ```
 
@@ -33,3 +43,15 @@ docs/
 This split keeps Atlas packaging concerns separate from the Ansible project. New
 backends should not be added beside `playbooks/` and `roles/` at the repository
 root.
+
+Within `ansible/`, the boundaries are:
+
+- `inventories/`: source of truth for host responsibility and group membership
+- `playbooks/site.yml`: steady-state site converge entrypoint
+- `playbooks/bootstrap.yml`: first converge entrypoint for new Atlas-managed hosts
+- `playbooks/components/`: internal composition layers
+- `playbooks/compat/`: temporary compatibility aliases for deprecated playbook names
+- `roles/foundation/`: host baseline and platform roles
+- `roles/control/`: Atlas control-plane roles
+- `roles/services/`: service-intent roles selected by `svc_*` inventory groups
+- `roles/legacy/`: controller-local or not-yet-migrated roles excluded from normal site converge

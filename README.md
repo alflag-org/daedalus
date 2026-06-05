@@ -29,7 +29,17 @@ ansible/
   ansible.cfg
   inventories/
   playbooks/
+    site.yml
+    bootstrap.yml
+    components/
+    compat/
   roles/
+    foundation/
+    control/
+    services/
+    legacy/
+    common/        # transitional implementation details
+    middleware/    # transitional implementation details
   collections/
 ```
 
@@ -106,6 +116,15 @@ infra playbooks
 infra inventory --site kanagawa01
 ```
 
+`infra playbooks` only lists the public lifecycle entrypoints:
+
+- `site`: default steady-state converge
+- `bootstrap`: first converge for a newly added Atlas-managed host
+
+The previous `atlas`, `baseline`, `dns`, `monitoring`, and `containers`
+playbook names remain accepted as temporary compatibility aliases, but they are
+no longer the normal operator menu.
+
 Reachability:
 
 ```bash
@@ -117,22 +136,23 @@ Dry-run validation:
 
 ```bash
 infra check
-infra check --site kanagawa01 --playbook baseline
-infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+infra check --site kanagawa01 --limit cap_control_node
+infra check --site kanagawa01 --limit svc_dns_recursive
 ```
 
 Diff preview:
 
 ```bash
 infra diff
-infra diff --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+infra diff --site kanagawa01 --limit cap_control_node
+infra diff --site kanagawa01 --limit svc_dns_recursive
 ```
 
 Apply is the mutating action and requires explicit confirmation:
 
 ```bash
 infra apply --yes
-infra apply --yes --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+infra apply --yes --site kanagawa01 --limit svc_dns_recursive
 ```
 
 `check`, `diff`, and `apply` support these limited Ansible pass-through options:
@@ -146,6 +166,24 @@ infra apply --yes --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdn
 
 Before invoking Ansible, `infra` prints the exact command it will run. Unknown
 sites and playbooks fail before Ansible starts.
+
+## Inventory Model
+
+Inventory is now the primary place where host responsibility is expressed.
+
+- `platform_*` groups select the platform foundation role, for example
+  `platform_vm` and `platform_lxc`.
+- `provider_*` groups describe the infrastructure provider, for example
+  `provider_proxmox`.
+- `cap_*` groups describe shared control-plane capabilities, for example
+  `cap_atlas_host` and `cap_control_node`.
+- `svc_*` groups describe service intent, for example `svc_dns_recursive`,
+  `svc_dns_authoritative`, `svc_connector`, `svc_bastion`, and `svc_workbench`.
+
+Playbooks are no longer the place where service intent is modeled. The public
+playbooks only define lifecycle boundaries: `site` for steady-state converge and
+`bootstrap` for first converge. Internal composition lives under
+`ansible/playbooks/components/`.
 
 ## Configuration
 
@@ -172,6 +210,15 @@ The steady-state connection model is `ops` plus `become`. Hosts bootstrap
 through the single `bootstrap` playbook, then converge back to normal
 `ops`-based runs after the roles have created the account, installed
 `~/.ssh/infra.pub`, and granted non-interactive sudo.
+
+For a new host, add it to the site inventory and assign at least:
+
+- one `platform_*` group
+- one `provider_*` group
+- any required `cap_*` groups
+- any required `svc_*` groups
+
+That inventory declaration is the source of truth for what the host should run.
 
 Create the local secret file from the sample when needed:
 
@@ -233,8 +280,8 @@ infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
   --extra-vars 'ansible_user=root ansible_become=false'
 ```
 
-After that first run, use the normal `atlas` or `baseline` playbooks with the
-standard `ops` connection model.
+After that first run, use the normal `site` converge with the standard `ops`
+connection model.
 
 ## State
 
@@ -254,7 +301,7 @@ python -m pip install -e .
 infra sites
 infra playbooks
 infra inventory
-infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
+infra check --site kanagawa01 --limit svc_dns_recursive
 ```
 
 For documentation-only changes, inspect the rendered Markdown and confirm that

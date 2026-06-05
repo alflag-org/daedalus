@@ -3,7 +3,7 @@ import subprocess
 import fire
 
 from .ansible import AnsibleRunner
-from .paths import DEFAULT_PLAYBOOK, DEFAULT_SITE, playbooks, sites
+from .paths import DEFAULT_PLAYBOOK, DEFAULT_SITE, public_playbooks, sites
 
 
 class Infra:
@@ -85,7 +85,7 @@ class Infra:
             print(site)
 
     def playbooks(self) -> None:
-        for playbook in playbooks():
+        for playbook in public_playbooks():
             print(playbook)
 
     @staticmethod
