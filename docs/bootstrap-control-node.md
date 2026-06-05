@@ -99,9 +99,21 @@ cap_control_node:
 The per-host vars remain:
 
 ```yaml
+ansible_connection: local
+ansible_become: true
+ansible_python_interpreter: /usr/bin/python3
+
+atlas_enabled: true
 atlas_bootstrap_mode: manual
 atlas_role: control
+atlas_runtime_kind: vm
+atlas_manage_scripts: false
+atlas_manage_runtime: false
 atlas_validate_runtime: true
+atlas_validate_shebangs: true
+
+ssh_server_enabled: true
+zabbix_agent_enabled: true
 ```
 
 The default `site` converge should be able to manage the control node after

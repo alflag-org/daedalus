@@ -7,6 +7,7 @@ PUBLIC_PLAYBOOKS = ("site", "bootstrap")
 DEPRECATED_PLAYBOOK_ALIASES = {
     "atlas": "compat/atlas.yml",
     "baseline": "compat/baseline.yml",
+    "cloudflare": "compat/cloudflare.yml",
     "dns": "compat/dns.yml",
     "monitoring": "compat/monitoring.yml",
     "containers": "compat/containers.yml",
