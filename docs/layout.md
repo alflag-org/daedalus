@@ -20,9 +20,19 @@ ansible/
   playbooks/
     site.yml
     bootstrap.yml
+    cloudflare.yml
     components/
     compat/
   roles/
+    ssh_server/
+    cloudflared/
+    cloudflare_ssh_target/
+    systemd_resolved/
+    dns_recursor/
+    dns_authoritative/
+    zabbix_agent/
+    docker_host/
+    vector_agent/
     foundation/
     control/
     services/
@@ -54,4 +64,5 @@ Within `ansible/`, the boundaries are:
 - `roles/foundation/`: host baseline and platform roles
 - `roles/control/`: Atlas control-plane roles
 - `roles/services/`: service-intent roles selected by `svc_*` inventory groups
+- `roles/<component>/`: component implementation roles selected by host vars
 - `roles/legacy/`: controller-local or not-yet-migrated roles excluded from normal site converge

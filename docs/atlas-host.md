@@ -16,11 +16,18 @@ runtime needed to run `atlas run infra ...`.
 For that host:
 
 ```yaml
+ansible_connection: local
+ansible_become: true
+ansible_python_interpreter: /usr/bin/python3
+
+atlas_enabled: true
 atlas_bootstrap_mode: manual
 atlas_role: control
+atlas_runtime_kind: vm
 atlas_manage_scripts: false
 atlas_manage_runtime: false
 atlas_validate_runtime: true
+atlas_validate_shebangs: true
 ```
 
 Daedalus validates the active Atlas runtime and can continue to manage the

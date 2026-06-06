@@ -121,9 +121,11 @@ infra inventory --site kanagawa01
 - `site`: default steady-state converge
 - `bootstrap`: first converge for a newly added Atlas-managed host
 
-The previous `atlas`, `baseline`, `dns`, `monitoring`, and `containers`
-playbook names remain accepted as temporary compatibility aliases, but they are
-no longer the normal operator menu.
+Focused component playbooks can still be requested explicitly with
+`--playbook`. `atlas`, `baseline`, `dns`, `monitoring`, and `containers` remain
+accepted as temporary compatibility aliases. `cloudflare` is also available as
+an explicit host-side component playbook, but it is not imported into the normal
+`site` converge.
 
 Reachability:
 
