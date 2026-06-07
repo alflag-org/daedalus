@@ -37,6 +37,7 @@ operators should target that playbook deliberately.
 | `systemd_resolved` | `systemd_resolved_enabled` | Configures systemd-resolved. `/etc/resolv.conf` is managed only when `systemd_resolved_manage_resolv_conf` is true. |
 | `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts. |
 | `dns_authoritative` | `dns_authoritative_enabled` | Installs and minimally configures NSD. It starts the service only when zones are explicitly provided. |
+| `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `zabbix_agent` | `zabbix_agent_enabled` | Installs and configures `zabbix-agent2` on managed hosts. |
 | `docker_host` | `docker_host_enabled` | Prepares Docker hosts only when explicitly enabled. No application containers are deployed. |
 | `vector_agent` | `vector_agent_enabled` | Reserved skeleton for future log forwarding. It does not configure external sinks. |
@@ -59,10 +60,20 @@ Current KANAGAWA01 component flags are:
 | `kng01-mgmt-connector-02` | LXC root, no become | cloudflared, Zabbix agent |
 | `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-workbench-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
+| `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
 
 The LXC connection policy reflects the current inventory state. VM hosts should
 use the normal `ops + become` model unless host-specific reality says
 otherwise.
+
+`kng01-dmz-web-01` is the first DMZ Web origin host. It is registered in VLAN
+130 at `10.10.30.21/24` with gateway `10.10.30.1`. Its nginx origin binds to
+`127.0.0.1:8080` by default, so WAN-direct inbound `80`/`443` is not part of
+this host contract. A later Cloudflare Tunnel or Access change should route to
+that local service URL or deliberately override the bind address.
+The host is opted into the existing `cloudflared` role, but apply runs still
+require `cloudflared_tunnel_token` from Vault, an untracked vars file, or an
+operator-provided extra var.
 
 ## External State
 
@@ -70,6 +81,7 @@ Daedalus does not currently manage:
 
 - Cloudflare Access applications
 - Cloudflare tunnel routes
+- Cloudflare tunnel tokens
 - Cloudflare private hostnames
 - Cloudflare dashboard state
 - Zabbix server provisioning
@@ -92,6 +104,16 @@ atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
 atlas run infra check --site kanagawa01 --playbook monitoring --limit kng01-mgmt-recdns-01
 atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
+atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
+atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
+```
+
+After applying the site playbook to `kng01-dmz-web-01`, the origin health check
+is available on the host at:
+
+```bash
+curl http://127.0.0.1:8080/healthz
 ```
 
 Local development machines may lack Atlas runtime, Vault password material, or
