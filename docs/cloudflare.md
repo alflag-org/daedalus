@@ -54,6 +54,16 @@ reach a local SSH daemon. The role depends on the local `ssh_server` role and
 validates `cloudflare_ssh_target_host:cloudflare_ssh_target_port` from the
 managed host.
 
+TCP forwarding defaults to `no`. Hosts that need client-side port forwarding,
+such as VS Code Remote SSH, should set:
+
+```yaml
+ssh_server_allow_tcp_forwarding: local
+```
+
+Use `yes` only for hosts that deliberately need both local and remote TCP
+forwarding.
+
 It does not create:
 
 - Access applications
