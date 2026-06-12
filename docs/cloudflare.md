@@ -18,11 +18,11 @@ Do not commit tunnel tokens.
 For apply runs, `cloudflared_enabled=true` requires:
 
 ```yaml
-cloudflared_tunnel_token: "{{ vault_cloudflared_tunnel_token }}"
+cloudflared_tunnel_token: "..."
 ```
 
-The value can come from Ansible Vault, a local untracked vars file, or an
-operator-provided extra var. Daedalus renders:
+The value can come from the operator secret store, a local untracked vars file,
+or an operator-provided extra var. Daedalus renders:
 
 ```text
 /etc/cloudflared/token.env

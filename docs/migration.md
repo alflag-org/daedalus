@@ -11,7 +11,6 @@ inventories/      -> ansible/inventories/
 playbooks/        -> ansible/playbooks/
 roles/            -> ansible/roles/
 group_vars/       -> ansible/inventories/kanagawa01/group_vars/ or removed when legacy-only
-vault_pass.sh     -> tools/vault_pass.sh
 ```
 
 Current playbook structure:

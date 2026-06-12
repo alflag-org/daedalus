@@ -76,8 +76,8 @@ otherwise.
 this host contract. A later Cloudflare Tunnel or Access change should route to
 that local service URL or deliberately override the bind address.
 The host is opted into the existing `cloudflared` role, but apply runs still
-require `cloudflared_tunnel_token` from Vault, an untracked vars file, or an
-operator-provided extra var.
+require `cloudflared_tunnel_token` from the operator secret store, an untracked
+vars file, or an operator-provided extra var.
 
 `kng01-mgmt-zabbix-01` is reserved for the primary Zabbix service in VLAN 110
 because monitoring and problem triage are management-plane responsibilities.
@@ -88,9 +88,9 @@ Zabbix server/frontend packages for the host. The managed frontend listens on
 HTTP port 80 through Caddy and serves `zabbix.alflag.internal` via the host's
 normal management-plane address. Apply runs require the database secret vars
 `mysql_root_password`, `mysql_zabbix_password`, and
-`mysql_zabbix_monitor_password` from Vault, an untracked vars file, or
-operator-provided extra vars. The VM is expected to exist before Daedalus runs;
-Daedalus manages the guest configuration after it is reachable at
+`mysql_zabbix_monitor_password` from the operator secret store, an untracked
+vars file, or operator-provided extra vars. The VM is expected to exist before
+Daedalus runs; Daedalus manages the guest configuration after it is reachable at
 `10.10.10.250`.
 
 Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
@@ -173,6 +173,6 @@ is available on the host at:
 curl http://127.0.0.1:8080/healthz
 ```
 
-Local development machines may lack Atlas runtime, Vault password material, or
+Local development machines may lack Atlas runtime, operator secret material, or
 `~/.ssh/infra`. In that case, use repository-local syntax checks as a static
 guard and run the commands above from `kng01-mgmt-control-01`.
