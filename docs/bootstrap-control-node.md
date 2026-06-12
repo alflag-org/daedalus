@@ -4,10 +4,10 @@
 configuration management for the site and is intentionally bootstrapped by hand.
 
 Daedalus is Atlas-operated and Ansible-backed. It needs Atlas, an Atlas scripts
-runtime, Ansible, SSH material, and Vault password access before it can manage
-hosts. Making Daedalus build that first runtime from a blank host would create a
-circular dependency: the configuration runner would depend on itself before it
-can run.
+runtime, Ansible, SSH material, and access to operator-managed secrets before it
+can manage hosts. Making Daedalus build that first runtime from a blank host
+would create a circular dependency: the configuration runner would depend on
+itself before it can run.
 
 ## Role
 
@@ -42,7 +42,6 @@ The first control node is expected to have at least:
 - Atlas scripts runtime
 - `ansible-core`
 - `~/.ssh/infra`
-- `ANSIBLE_VAULT_PASSWORD`
 
 ## Required Paths
 
@@ -62,13 +61,9 @@ The first control node is expected to have at least:
 
 Do not commit plaintext secrets.
 
-The Vault password is supplied in one of two ways:
-
-- `ANSIBLE_VAULT_PASSWORD` in the operator environment
-- local, untracked `secrets/ansible_vault.env`
-
-Private SSH keys, real Vault passwords, and generated credentials must stay out
-of git.
+Private SSH keys, generated credentials, and service passwords must stay out of
+git. Provide service secrets from the agreed operator secret store or from
+operator-local files outside the repository.
 
 ## Runtime Validation
 

@@ -21,9 +21,9 @@ operator-provided tunnel tokens for apply runs.
 `apply` is the only mutating action and requires `--yes`. Run `check` or `diff`
 first unless there is a clear operational reason not to.
 
-Keep plaintext secrets out of git. Use `secrets/ansible_vault.env` for local
-Vault password material and keep shared secret values in the agreed operator
-secret store.
+Keep plaintext secrets out of git. Keep shared secret values in the agreed
+operator secret store, and pass operator-local vars from files outside this
+repository.
 
 For the managed Zabbix server, apply runs require these database variables:
 
@@ -33,8 +33,8 @@ mysql_zabbix_password: ...
 mysql_zabbix_monitor_password: ...
 ```
 
-Pass them from Vault or from an operator-local file outside the repository, for
-example:
+Pass them from the operator secret store or from an operator-local file outside
+the repository, for example:
 
 ```bash
 atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01 \

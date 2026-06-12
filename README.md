@@ -47,7 +47,6 @@ Local operator support lives outside the Ansible project:
 
 ```text
 tools/
-secrets/
 docs/
 ```
 
@@ -199,15 +198,10 @@ roles_path = roles
 collections_path = collections
 private_key_file = ~/.ssh/infra
 remote_user = ops
-vault_password_file = ../tools/vault_pass.sh
 host_key_checking = False
 pipelining = True
 ssh_args = -o ForwardAgent=yes
 ```
-
-`tools/vault_pass.sh` reads the Ansible Vault password from
-`ANSIBLE_VAULT_PASSWORD` or from a local, untracked
-`secrets/ansible_vault.env` file.
 
 The steady-state connection model is `ops` plus `become`. Hosts bootstrap
 through the single `bootstrap` playbook, then converge back to normal
@@ -223,20 +217,8 @@ For a new host, add it to the site inventory and assign at least:
 
 That inventory declaration is the source of truth for what the host should run.
 
-Create the local secret file from the sample when needed:
-
-```bash
-cp secrets/ansible_vault.env.sample secrets/ansible_vault.env
-```
-
-Then set the value in `secrets/ansible_vault.env`:
-
-```text
-ANSIBLE_VAULT_PASSWORD=...
-```
-
-Do not commit plaintext secrets. If Vault-encrypted variable files are needed,
-keep them under the site inventory that consumes them.
+Do not commit plaintext secrets. Pass operator-only secret values from the
+agreed secret store or from local files outside this repository.
 
 ## Local Development
 
@@ -263,7 +245,6 @@ ansible-galaxy collection install -r collections/requirements.yml -p collections
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
   -i inventories/kanagawa01/hosts.yml \
   playbooks/site.yml \
-  --vault-password-file ../tools/vault_pass.sh \
   --check --diff
 ```
 
@@ -301,8 +282,8 @@ Daedalus does not maintain its own audit store. Atlas records script runs,
 arguments, duration, and exit codes. Keep persistent operational state in Atlas
 or in explicit reviewable artifacts, not in ad-hoc files inside this repository.
 
-Local runtime directories such as `.venv/`, `.ansible/`, and `secrets/` are
-machine-local and should not be used as shared state.
+Local runtime directories such as `.venv/` and `.ansible/` are machine-local
+and should not be used as shared state.
 
 ## Verification
 
