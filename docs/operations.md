@@ -24,3 +24,19 @@ first unless there is a clear operational reason not to.
 Keep plaintext secrets out of git. Use `secrets/ansible_vault.env` for local
 Vault password material and keep shared secret values in the agreed operator
 secret store.
+
+For the managed Zabbix server, apply runs require these database variables:
+
+```yaml
+mysql_root_password: ...
+mysql_zabbix_password: ...
+mysql_zabbix_monitor_password: ...
+```
+
+Pass them from Vault or from an operator-local file outside the repository, for
+example:
+
+```bash
+atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01 \
+  --extra-vars @/home/ops/.config/daedalus/zabbix-db.yml
+```
