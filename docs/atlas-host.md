@@ -87,8 +87,13 @@ infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
 The playbook branches inside `common/bootstrap`: VM and LXC hosts share one
 entrypoint, and the role selects the platform-specific tasks after fact
 gathering. For the root-only LXC case, that run connects as `root`, creates and
-authorizes `ops`, installs passwordless sudo, and prepares the Atlas host
-layout. After it succeeds, switch back to the normal `site` converge.
+authorizes `ops`, and installs passwordless sudo. After it succeeds, switch back
+to the normal `site` converge.
+
+The same public bootstrap playbook also prepares Atlas runtime hosts, but only
+for inventory members of `cap_atlas_host`. Regular service hosts can use
+bootstrap for operator access and platform foundation without becoming Atlas
+runtime hosts.
 
 ## Scripts Release Management
 

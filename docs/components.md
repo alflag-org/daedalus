@@ -60,6 +60,7 @@ Current KANAGAWA01 component flags are:
 | `kng01-mgmt-connector-02` | LXC root, no become | cloudflared, Zabbix agent |
 | `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-workbench-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
+| `kng01-mgmt-zabbix-01` | VM `ops + become` | Zabbix server/frontend/local DB intent, Zabbix agent |
 | `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
 
 The LXC connection policy reflects the current inventory state. VM hosts should
@@ -75,6 +76,50 @@ The host is opted into the existing `cloudflared` role, but apply runs still
 require `cloudflared_tunnel_token` from Vault, an untracked vars file, or an
 operator-provided extra var.
 
+`kng01-mgmt-zabbix-01` is reserved for the primary Zabbix service in VLAN 110
+because monitoring and problem triage are management-plane responsibilities.
+The inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
+`platform_vm`, and `svc_zabbix`. Daedalus manages the VM foundation, SSH policy,
+systemd-resolved policy, and `zabbix-agent2` for the host. The `svc_zabbix`
+group also records the intended full Zabbix stack (`zabbix-server`,
+`zabbix-frontend`, `zabbix-agent2`, and a local database), but Daedalus does not
+yet wire that service intent to a full Zabbix Server converge role. The VM is
+expected to exist before Daedalus runs; Daedalus manages the guest configuration
+after it is reachable at `10.10.10.250`.
+
+Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
+migration are intentionally out of scope for this host definition.
+
+## Network Allocation
+
+| Host | Zone | VLAN | Address | Gateway |
+| --- | --- | ---: | --- | --- |
+| `kng01-mgmt-connector-01` | mgmt | 110 | `10.10.10.41/24` | `10.10.10.1` |
+| `kng01-mgmt-connector-02` | mgmt | 110 | `10.10.10.42/24` | `10.10.10.1` |
+| `kng01-mgmt-bastion-01` | mgmt | 110 | `10.10.10.60/24` | `10.10.10.1` |
+| `kng01-mgmt-workbench-01` | mgmt | 110 | `10.10.10.61/24` | `10.10.10.1` |
+| `kng01-mgmt-control-01` | mgmt | 110 | `10.10.10.62/24` | `10.10.10.1` |
+| `kng01-mgmt-recdns-01` | mgmt | 110 | `10.10.10.240/24` | `10.10.10.1` |
+| `kng01-mgmt-recdns-02` | mgmt | 110 | `10.10.10.241/24` | `10.10.10.1` |
+| `kng01-mgmt-authdns-01` | mgmt | 110 | `10.10.10.242/24` | `10.10.10.1` |
+| `kng01-mgmt-authdns-02` | mgmt | 110 | `10.10.10.243/24` | `10.10.10.1` |
+| `kng01-mgmt-zabbix-01` | mgmt | 110 | `10.10.10.250/24` | `10.10.10.1` |
+| `kng01-dmz-web-01` | dmz | 130 | `10.10.30.21/24` | `10.10.30.1` |
+
+KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
+`kng01-mgmt-zabbix-01` uses those resolver addresses in inventory metadata.
+
+## Required Internal DNS Records
+
+Daedalus does not currently keep `alflag.internal` zone records as managed
+inventory data. Until that source of truth moves into Daedalus, create or verify
+these records in the authoritative internal DNS system:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
+| `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
+
 ## External State
 
 Daedalus does not currently manage:
@@ -85,6 +130,7 @@ Daedalus does not currently manage:
 - Cloudflare private hostnames
 - Cloudflare dashboard state
 - Zabbix server provisioning
+- Prometheus, Grafana, or Alertmanager deployment
 - application containers
 - authoritative DNS zone migration unless `dns_authoritative_zones` explicitly
   provides zone text
@@ -104,6 +150,9 @@ atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
 atlas run infra check --site kanagawa01 --playbook monitoring --limit kng01-mgmt-recdns-01
 atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
+atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
+atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
