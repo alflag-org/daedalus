@@ -251,8 +251,11 @@ Runtime dependencies are in `requirements.txt`. Development-only tools are in
 
 ## Direct Ansible Execution
 
-Prefer `infra` for normal operator runs. If you need to bypass the wrapper while
-debugging Ansible itself, execute from `ansible/` or set the config explicitly:
+Prefer `infra` for normal operator runs. The wrapper installs missing Ansible
+collections from `ansible/collections/requirements.yml` before playbook runs.
+
+If you need to bypass the wrapper while debugging Ansible itself, execute from
+`ansible/` or set the config explicitly:
 
 ```bash
 cd ansible
