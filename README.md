@@ -47,7 +47,6 @@ Local operator support lives outside the Ansible project:
 
 ```text
 tools/
-secrets/
 docs/
 ```
 
@@ -283,8 +282,8 @@ Daedalus does not maintain its own audit store. Atlas records script runs,
 arguments, duration, and exit codes. Keep persistent operational state in Atlas
 or in explicit reviewable artifacts, not in ad-hoc files inside this repository.
 
-Local runtime directories such as `.venv/`, `.ansible/`, and `secrets/` are
-machine-local and should not be used as shared state.
+Local runtime directories such as `.venv/` and `.ansible/` are machine-local
+and should not be used as shared state.
 
 ## Verification
 

@@ -46,7 +46,6 @@ Local operator support stays outside the Ansible project:
 
 ```text
 tools/
-secrets/
 docs/
 ```
 
