@@ -220,12 +220,27 @@ That inventory declaration is the source of truth for what the host should run.
 Do not commit plaintext secrets. Pass operator-only secret values from the
 agreed secret store or from local files outside this repository.
 
+The `infra` wrapper automatically loads a site-local operator vars file when it
+exists:
+
+```text
+~/.config/daedalus/<site>.yml
+~/.config/daedalus/<site>.yaml
+~/.config/daedalus/<site>.json
+```
+
+For KANAGAWA01, the default path is `~/.config/daedalus/kanagawa01.yml`.
+Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` to use a different file.
+Explicit `--extra-vars` values are still supported and are passed after the
+auto-loaded file.
+
 ## Local Development
 
 Install the Python package in editable mode when working without Atlas:
 
 ```bash
 python -m pip install -e .
+python -m unittest discover -s tests
 infra sites
 infra playbooks
 infra inventory

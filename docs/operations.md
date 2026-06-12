@@ -25,6 +25,19 @@ Keep plaintext secrets out of git. Keep shared secret values in the agreed
 operator secret store, and pass operator-local vars from files outside this
 repository.
 
+The `infra` wrapper automatically loads the first existing site-local operator
+vars file from:
+
+```text
+~/.config/daedalus/<site>.yml
+~/.config/daedalus/<site>.yaml
+~/.config/daedalus/<site>.json
+```
+
+Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` when an operator run needs a
+different file. Explicit `--extra-vars` still works and is applied after the
+auto-loaded file.
+
 For the managed Zabbix server, apply runs require these database variables:
 
 ```yaml
@@ -33,10 +46,20 @@ mysql_zabbix_password: ...
 mysql_zabbix_monitor_password: ...
 ```
 
-Pass them from the operator secret store or from an operator-local file outside
-the repository, for example:
+Store them in the KANAGAWA01 operator vars file:
 
 ```bash
-atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01 \
-  --extra-vars @/home/ops/.config/daedalus/zabbix-db.yml
+mkdir -p /home/ops/.config/daedalus
+umask 077
+cat > /home/ops/.config/daedalus/kanagawa01.yml <<'EOF'
+mysql_root_password: ...
+mysql_zabbix_password: ...
+mysql_zabbix_monitor_password: ...
+EOF
+```
+
+Then normal targeted runs do not need a repeated `--extra-vars` argument:
+
+```bash
+atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
 ```
