@@ -11,6 +11,10 @@ atlas run infra apply --yes --site kanagawa01 --limit svc_dns_recursive
 Use `infra sites` and `infra playbooks` before targeting a non-default site or
 public playbook entrypoint.
 
+The `infra` wrapper installs missing Ansible collections from
+`ansible/collections/requirements.yml` before playbook runs, so normal Atlas
+runs do not need a separate `ansible-galaxy collection install` step.
+
 Normal steady-state runs should use the default `site` playbook and narrow the
 target with `--limit <inventory-group-or-host>` when needed. Reserve
 `--playbook bootstrap` for first converge on a newly added Atlas-managed host.
