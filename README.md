@@ -259,6 +259,7 @@ debugging Ansible itself, execute from `ansible/` or set the config explicitly:
 
 ```bash
 cd ansible
+ansible-galaxy collection install -r collections/requirements.yml -p collections
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
   -i inventories/kanagawa01/hosts.yml \
   playbooks/site.yml \
