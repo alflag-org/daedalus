@@ -9,6 +9,7 @@ from .paths import ansible_config_path, ansible_root, inventory_path, playbook_p
 
 class AnsibleRunner:
     def __init__(self, site: str) -> None:
+        self.site = site
         self.ansible_root = ansible_root()
         self.inventory = inventory_path(site)
 
@@ -32,6 +33,7 @@ class AnsibleRunner:
         self._append_limit(cmd, limit)
         self._append_option(cmd, "--tags", tags)
         self._append_option(cmd, "--skip-tags", skip_tags)
+        self._append_operator_extra_vars(cmd)
         self._append_option(cmd, "--extra-vars", extra_vars)
         if check:
             cmd.append("--check")
@@ -83,3 +85,23 @@ class AnsibleRunner:
     def _append_option(cmd: list[str], option: str, value: str | None) -> None:
         if value and value.strip():
             cmd.extend([option, value])
+
+    def _append_operator_extra_vars(self, cmd: list[str]) -> None:
+        vars_path = self._operator_extra_vars_path()
+        if vars_path:
+            cmd.extend(["--extra-vars", f"@{vars_path}"])
+
+    def _operator_extra_vars_path(self) -> Path | None:
+        override = os.environ.get("DAEDALUS_OPERATOR_VARS")
+        if override and override.strip():
+            path = Path(override).expanduser()
+            if not path.is_file():
+                raise RuntimeError(f"Operator vars file not found: {path}")
+            return path
+
+        for suffix in ("yml", "yaml", "json"):
+            path = Path.home() / ".config" / "daedalus" / f"{self.site}.{suffix}"
+            if path.is_file():
+                return path
+
+        return None

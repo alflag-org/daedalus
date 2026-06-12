@@ -1,0 +1,92 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from daedalus.ansible import AnsibleRunner
+
+
+class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
+    def capture_playbook_cmd(self, runner: AnsibleRunner, **kwargs) -> list[str]:
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(cmd: list[str]) -> None:
+            captured["cmd"] = cmd
+
+        runner._run = fake_run  # type: ignore[method-assign]
+        runner.playbook("site", **kwargs)
+        return captured["cmd"]
+
+    def test_playbook_uses_site_operator_vars_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            vars_path.parent.mkdir(parents=True)
+            vars_path.write_text("mysql_root_password: test\n", encoding="utf-8")
+
+            with patch.dict(os.environ, {"HOME": home}, clear=True):
+                cmd = self.capture_playbook_cmd(
+                    AnsibleRunner("kanagawa01"),
+                    limit="kng01-mgmt-zabbix-01",
+                    check=True,
+                )
+
+        self.assertIn("--extra-vars", cmd)
+        self.assertIn(f"@{vars_path}", cmd)
+        self.assertLess(cmd.index(f"@{vars_path}"), cmd.index("--check"))
+
+    def test_explicit_extra_vars_follow_operator_vars(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            vars_path.parent.mkdir(parents=True)
+            vars_path.write_text("mysql_root_password: test\n", encoding="utf-8")
+
+            with patch.dict(os.environ, {"HOME": home}, clear=True):
+                cmd = self.capture_playbook_cmd(
+                    AnsibleRunner("kanagawa01"),
+                    extra_vars="zabbix_agent_enabled=true",
+                )
+
+        extra_vars_indexes = [
+            index for index, value in enumerate(cmd) if value == "--extra-vars"
+        ]
+        self.assertEqual(len(extra_vars_indexes), 2)
+        self.assertEqual(cmd[extra_vars_indexes[0] + 1], f"@{vars_path}")
+        self.assertEqual(cmd[extra_vars_indexes[1] + 1], "zabbix_agent_enabled=true")
+
+    def test_environment_override_takes_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            default_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            default_path.parent.mkdir(parents=True)
+            default_path.write_text("mysql_root_password: default\n", encoding="utf-8")
+
+            override_path = Path(home) / "operator.yml"
+            override_path.write_text("mysql_root_password: override\n", encoding="utf-8")
+
+            with patch.dict(
+                os.environ,
+                {"HOME": home, "DAEDALUS_OPERATOR_VARS": str(override_path)},
+                clear=True,
+            ):
+                cmd = self.capture_playbook_cmd(AnsibleRunner("kanagawa01"))
+
+        self.assertIn(f"@{override_path}", cmd)
+        self.assertNotIn(f"@{default_path}", cmd)
+
+    def test_missing_environment_override_fails(self) -> None:
+        missing_path = "/tmp/daedalus-missing-vars.yml"
+
+        with patch.dict(
+            os.environ,
+            {"DAEDALUS_OPERATOR_VARS": missing_path},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                f"Operator vars file not found: {missing_path}",
+            ):
+                AnsibleRunner("kanagawa01").playbook("site")
+
+
+if __name__ == "__main__":
+    unittest.main()

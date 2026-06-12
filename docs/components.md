@@ -88,10 +88,10 @@ Zabbix server/frontend packages for the host. The managed frontend listens on
 HTTP port 80 through Caddy and serves `zabbix.alflag.internal` via the host's
 normal management-plane address. Apply runs require the database secret vars
 `mysql_root_password`, `mysql_zabbix_password`, and
-`mysql_zabbix_monitor_password` from the operator secret store, an untracked
-vars file, or operator-provided extra vars. The VM is expected to exist before
-Daedalus runs; Daedalus manages the guest configuration after it is reachable at
-`10.10.10.250`.
+`mysql_zabbix_monitor_password` from the operator secret store, the site-local
+operator vars file loaded by `infra`, or operator-provided extra vars. The VM is
+expected to exist before Daedalus runs; Daedalus manages the guest configuration
+after it is reachable at `10.10.10.250`.
 
 Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
 migration are intentionally out of scope for this host definition.

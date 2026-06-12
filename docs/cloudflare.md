@@ -21,8 +21,8 @@ For apply runs, `cloudflared_enabled=true` requires:
 cloudflared_tunnel_token: "..."
 ```
 
-The value can come from the operator secret store, a local untracked vars file,
-or an operator-provided extra var. Daedalus renders:
+The value can come from the operator secret store, the site-local operator vars
+file loaded by `infra`, or an operator-provided extra var. Daedalus renders:
 
 ```text
 /etc/cloudflared/token.env
