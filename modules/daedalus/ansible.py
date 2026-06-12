@@ -4,7 +4,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 from .paths import ansible_config_path, ansible_root, inventory_path, playbook_path
+
+
+GALAXY_INSTALL_TIMEOUT_SECONDS = 120
+GALAXY_SERVER_TIMEOUT_SECONDS = 30
 
 
 class AnsibleRunner:
@@ -40,7 +46,7 @@ class AnsibleRunner:
         if diff:
             cmd.append("--diff")
 
-        self._run(cmd)
+        self._run(cmd, ensure_collections=True)
 
     def adhoc(self, module: str, limit: str | None = None) -> None:
         cmd = [
@@ -64,11 +70,14 @@ class AnsibleRunner:
         ]
         self._run(cmd)
 
-    def _run(self, cmd: list[str]) -> None:
+    def _run(self, cmd: list[str], ensure_collections: bool = False) -> None:
         env = os.environ.copy()
         env["ANSIBLE_CONFIG"] = str(ansible_config_path())
         executable_dir = str(Path(sys.executable).parent)
         env["PATH"] = os.pathsep.join([executable_dir, env.get("PATH", "")])
+
+        if ensure_collections:
+            self._ensure_collections(env)
 
         print(f"Running: {shlex.join(cmd)}", flush=True)
         subprocess.run(cmd, check=True, cwd=self.ansible_root, env=env)
@@ -105,3 +114,84 @@ class AnsibleRunner:
                 return path
 
         return None
+
+    def _ensure_collections(self, env: dict[str, str]) -> None:
+        if not self._missing_collections():
+            return
+
+        requirements = self._collections_requirements_path()
+        cmd = [
+            "ansible-galaxy",
+            "collection",
+            "install",
+            "--timeout",
+            str(GALAXY_SERVER_TIMEOUT_SECONDS),
+            "-r",
+            self._relative(requirements),
+            "-p",
+            self._relative(self._collections_path()),
+        ]
+        print(f"Running: {shlex.join(cmd)}", flush=True)
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                cwd=self.ansible_root,
+                env=env,
+                timeout=GALAXY_INSTALL_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                "Timed out installing Ansible collections from "
+                f"{self._relative(requirements)}"
+            ) from exc
+
+    def _missing_collections(self) -> list[str]:
+        return [
+            collection
+            for collection in self._required_collections()
+            if not self._collection_installed(collection)
+        ]
+
+    def _required_collections(self) -> list[str]:
+        requirements = self._collections_requirements_path()
+        if not requirements.is_file():
+            return []
+
+        data = yaml.safe_load(requirements.read_text(encoding="utf-8")) or {}
+        collections = data.get("collections") if isinstance(data, dict) else None
+        if not isinstance(collections, list):
+            return []
+
+        required = []
+        for collection in collections:
+            if isinstance(collection, str):
+                name = collection
+            elif isinstance(collection, dict):
+                name = collection.get("name")
+            else:
+                continue
+
+            if isinstance(name, str) and name.strip():
+                required.append(name.strip())
+
+        return required
+
+    def _collection_installed(self, name: str) -> bool:
+        parts = name.split(".", maxsplit=1)
+        if len(parts) != 2:
+            return False
+
+        namespace, collection = parts
+        return (
+            self._collections_path()
+            / "ansible_collections"
+            / namespace
+            / collection
+        ).is_dir()
+
+    def _collections_path(self) -> Path:
+        return self.ansible_root / "collections"
+
+    def _collections_requirements_path(self) -> Path:
+        return self._collections_path() / "requirements.yml"

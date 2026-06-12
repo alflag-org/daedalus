@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,7 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
     def capture_playbook_cmd(self, runner: AnsibleRunner, **kwargs) -> list[str]:
         captured: dict[str, list[str]] = {}
 
-        def fake_run(cmd: list[str]) -> None:
+        def fake_run(cmd: list[str], ensure_collections: bool = False) -> None:
             captured["cmd"] = cmd
 
         runner._run = fake_run  # type: ignore[method-assign]
@@ -86,6 +87,139 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
                 f"Operator vars file not found: {missing_path}",
             ):
                 AnsibleRunner("kanagawa01").playbook("site")
+
+
+class AnsibleRunnerCollectionsTest(unittest.TestCase):
+    def build_runner(self, ansible_root: Path) -> AnsibleRunner:
+        runner = AnsibleRunner("kanagawa01")
+        runner.ansible_root = ansible_root
+        return runner
+
+    def write_requirements(self, ansible_root: Path) -> None:
+        collections = ansible_root / "collections"
+        collections.mkdir(parents=True)
+        (collections / "requirements.yml").write_text(
+            "---\ncollections:\n  - name: community.mysql\n",
+            encoding="utf-8",
+        )
+
+    def install_collection(self, ansible_root: Path) -> None:
+        (
+            ansible_root
+            / "collections"
+            / "ansible_collections"
+            / "community"
+            / "mysql"
+        ).mkdir(parents=True)
+
+    def test_playbook_enables_collection_check(self) -> None:
+        runner = AnsibleRunner("kanagawa01")
+
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(runner, "_run") as run,
+        ):
+            runner.playbook("site")
+
+        run.assert_called_once()
+        self.assertTrue(run.call_args.kwargs["ensure_collections"])
+
+    def test_inventory_graph_skips_collection_check(self) -> None:
+        runner = AnsibleRunner("kanagawa01")
+
+        with patch.object(runner, "_run") as run:
+            runner.inventory_graph()
+
+        run.assert_called_once()
+        self.assertEqual(run.call_args.kwargs, {})
+
+    def test_missing_collection_is_detected_from_requirements(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+
+            runner = self.build_runner(ansible_root)
+
+            self.assertEqual(runner._missing_collections(), ["community.mysql"])
+
+    def test_installed_collection_is_not_reported_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+            self.install_collection(ansible_root)
+
+            runner = self.build_runner(ansible_root)
+
+            self.assertEqual(runner._missing_collections(), [])
+
+    def test_missing_collection_installs_requirements_before_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+
+            runner = self.build_runner(ansible_root)
+            env = {"ANSIBLE_CONFIG": str(ansible_root / "ansible.cfg")}
+
+            with (
+                patch("builtins.print"),
+                patch("daedalus.ansible.subprocess.run") as run,
+            ):
+                runner._ensure_collections(env)
+
+        run.assert_called_once_with(
+            [
+                "ansible-galaxy",
+                "collection",
+                "install",
+                "--timeout",
+                "30",
+                "-r",
+                "collections/requirements.yml",
+                "-p",
+                "collections",
+            ],
+            check=True,
+            cwd=ansible_root,
+            env=env,
+            timeout=120,
+        )
+
+    def test_collection_install_timeout_reports_runtime_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+
+            runner = self.build_runner(ansible_root)
+
+            with (
+                patch("builtins.print"),
+                patch(
+                    "daedalus.ansible.subprocess.run",
+                    side_effect=subprocess.TimeoutExpired(
+                        cmd="ansible-galaxy",
+                        timeout=120,
+                    ),
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Timed out installing Ansible collections from "
+                    "collections/requirements.yml",
+                ):
+                    runner._ensure_collections({})
+
+    def test_installed_collection_skips_requirements_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+            self.install_collection(ansible_root)
+
+            runner = self.build_runner(ansible_root)
+
+            with patch("daedalus.ansible.subprocess.run") as run:
+                runner._ensure_collections({})
+
+        run.assert_not_called()
 
 
 if __name__ == "__main__":
