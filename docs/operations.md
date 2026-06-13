@@ -68,3 +68,12 @@ Then normal targeted runs do not need a repeated `--extra-vars` argument:
 ```bash
 atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
 ```
+
+If the initial Zabbix schema import fails partway through a fresh provisioning
+run, the next apply stops when it detects the partial database instead of
+treating it as complete. For a fresh host where the Zabbix database can be
+discarded, add this one-time operator var and rerun the targeted apply:
+
+```yaml
+zabbix_server_recreate_partial_schema: true
+```
