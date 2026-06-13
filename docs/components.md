@@ -87,9 +87,10 @@ systemd-resolved policy, `zabbix-agent2`, local MySQL, PHP-FPM, Caddy, and the
 Zabbix server/frontend packages for the host. The managed frontend listens on
 HTTP port 80 through Caddy and serves `zabbix.alflag.internal` via the host's
 normal management-plane address. Apply runs require the database secret vars
-`mysql_root_password`, `mysql_zabbix_password`, and
-`mysql_zabbix_monitor_password` from the operator secret store, the site-local
-operator vars file loaded by `infra`, or operator-provided extra vars. The VM is
+`mysql_zabbix_password` and `mysql_zabbix_monitor_password` from the operator
+secret store, the site-local operator vars file loaded by `infra`, or
+operator-provided extra vars. The local MySQL root account is managed over the
+Unix socket and does not need an operator-provided database password. The VM is
 expected to exist before Daedalus runs; Daedalus manages the guest configuration
 after it is reachable at `10.10.10.250`.
 
