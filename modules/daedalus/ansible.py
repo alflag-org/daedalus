@@ -1,7 +1,10 @@
+import json
 import os
+import re
 import shlex
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -11,6 +14,12 @@ from .paths import ansible_config_path, ansible_root, inventory_path, playbook_p
 
 GALAXY_INSTALL_TIMEOUT_SECONDS = 120
 GALAXY_SERVER_TIMEOUT_SECONDS = 30
+
+
+@dataclass(frozen=True)
+class CollectionRequirement:
+    name: str
+    version: str | None = None
 
 
 class AnsibleRunner:
@@ -126,6 +135,7 @@ class AnsibleRunner:
             "install",
             "--timeout",
             str(GALAXY_SERVER_TIMEOUT_SECONDS),
+            "--upgrade",
             "-r",
             self._relative(requirements),
             "-p",
@@ -148,12 +158,12 @@ class AnsibleRunner:
 
     def _missing_collections(self) -> list[str]:
         return [
-            collection
-            for collection in self._required_collections()
-            if not self._collection_installed(collection)
+            requirement.name
+            for requirement in self._required_collections()
+            if not self._collection_satisfies(requirement)
         ]
 
-    def _required_collections(self) -> list[str]:
+    def _required_collections(self) -> list[CollectionRequirement]:
         requirements = self._collections_requirements_path()
         if not requirements.is_file():
             return []
@@ -167,20 +177,42 @@ class AnsibleRunner:
         for collection in collections:
             if isinstance(collection, str):
                 name = collection
+                version = None
             elif isinstance(collection, dict):
                 name = collection.get("name")
+                version = collection.get("version")
             else:
                 continue
 
             if isinstance(name, str) and name.strip():
-                required.append(name.strip())
+                required.append(
+                    CollectionRequirement(
+                        name=name.strip(),
+                        version=version.strip()
+                        if isinstance(version, str) and version.strip()
+                        else None,
+                    )
+                )
 
         return required
 
-    def _collection_installed(self, name: str) -> bool:
+    def _collection_satisfies(self, requirement: CollectionRequirement) -> bool:
+        collection_path = self._collection_install_path(requirement.name)
+        if not collection_path.is_dir():
+            return False
+        if not requirement.version:
+            return True
+
+        installed_version = self._installed_collection_version(collection_path)
+        if not installed_version:
+            return False
+
+        return self._version_satisfies(installed_version, requirement.version)
+
+    def _collection_install_path(self, name: str) -> Path:
         parts = name.split(".", maxsplit=1)
         if len(parts) != 2:
-            return False
+            return self._collections_path() / "ansible_collections" / name
 
         namespace, collection = parts
         return (
@@ -188,7 +220,70 @@ class AnsibleRunner:
             / "ansible_collections"
             / namespace
             / collection
-        ).is_dir()
+        )
+
+    @staticmethod
+    def _installed_collection_version(collection_path: Path) -> str | None:
+        manifest = collection_path / "MANIFEST.json"
+        if not manifest.is_file():
+            return None
+
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+        collection_info = data.get("collection_info")
+        if not isinstance(collection_info, dict):
+            return None
+
+        version = collection_info.get("version")
+        return version if isinstance(version, str) else None
+
+    @classmethod
+    def _version_satisfies(cls, installed: str, requirement: str) -> bool:
+        clauses = [clause.strip() for clause in requirement.split(",") if clause.strip()]
+        return all(cls._version_clause_satisfies(installed, clause) for clause in clauses)
+
+    @classmethod
+    def _version_clause_satisfies(cls, installed: str, clause: str) -> bool:
+        match = re.fullmatch(r"(<=|>=|==|!=|<|>|=)?\s*([0-9][0-9A-Za-z.+-]*)", clause)
+        if not match:
+            return False
+
+        operator = match.group(1) or "=="
+        required = match.group(2)
+        installed_parts = cls._version_parts(installed)
+        required_parts = cls._version_parts(required)
+        if installed_parts is None or required_parts is None:
+            return False
+
+        if operator in ("=", "=="):
+            return installed_parts == required_parts
+        if operator == "!=":
+            return installed_parts != required_parts
+        if operator == ">=":
+            return installed_parts >= required_parts
+        if operator == ">":
+            return installed_parts > required_parts
+        if operator == "<=":
+            return installed_parts <= required_parts
+        if operator == "<":
+            return installed_parts < required_parts
+        return False
+
+    @staticmethod
+    def _version_parts(value: str) -> tuple[int, ...] | None:
+        parts = []
+        for part in value.split("."):
+            match = re.match(r"\d+", part)
+            if not match:
+                return None
+            parts.append(int(match.group(0)))
+
+        while len(parts) < 3:
+            parts.append(0)
+
+        return tuple(parts)
 
     def _collections_path(self) -> Path:
         return self.ansible_root / "collections"

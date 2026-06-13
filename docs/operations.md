@@ -45,10 +45,12 @@ auto-loaded file.
 For the managed Zabbix server, apply runs require these database variables:
 
 ```yaml
-mysql_root_password: ...
 mysql_zabbix_password: ...
 mysql_zabbix_monitor_password: ...
 ```
+
+The local MySQL root account is managed over the Unix socket and does not need
+an operator-provided database password.
 
 Store them in the KANAGAWA01 operator vars file:
 
@@ -56,7 +58,6 @@ Store them in the KANAGAWA01 operator vars file:
 mkdir -p /home/ops/.config/daedalus
 umask 077
 cat > /home/ops/.config/daedalus/kanagawa01.yml <<'EOF'
-mysql_root_password: ...
 mysql_zabbix_password: ...
 mysql_zabbix_monitor_password: ...
 EOF

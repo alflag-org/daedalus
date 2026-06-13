@@ -23,7 +23,7 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_root_password: test\n", encoding="utf-8")
+            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
@@ -40,7 +40,7 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_root_password: test\n", encoding="utf-8")
+            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
@@ -59,10 +59,10 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             default_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             default_path.parent.mkdir(parents=True)
-            default_path.write_text("mysql_root_password: default\n", encoding="utf-8")
+            default_path.write_text("mysql_zabbix_password: default\n", encoding="utf-8")
 
             override_path = Path(home) / "operator.yml"
-            override_path.write_text("mysql_root_password: override\n", encoding="utf-8")
+            override_path.write_text("mysql_zabbix_password: override\n", encoding="utf-8")
 
             with patch.dict(
                 os.environ,
@@ -99,18 +99,23 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
         collections = ansible_root / "collections"
         collections.mkdir(parents=True)
         (collections / "requirements.yml").write_text(
-            "---\ncollections:\n  - name: community.mysql\n",
+            "---\ncollections:\n  - name: ansible.mysql\n    version: '>=3.10.0'\n",
             encoding="utf-8",
         )
 
-    def install_collection(self, ansible_root: Path) -> None:
-        (
+    def install_collection(self, ansible_root: Path, version: str = "3.10.0") -> None:
+        collection_path = (
             ansible_root
             / "collections"
             / "ansible_collections"
-            / "community"
+            / "ansible"
             / "mysql"
-        ).mkdir(parents=True)
+        )
+        collection_path.mkdir(parents=True)
+        (collection_path / "MANIFEST.json").write_text(
+            f'{{"collection_info": {{"version": "{version}"}}}}\n',
+            encoding="utf-8",
+        )
 
     def test_playbook_enables_collection_check(self) -> None:
         runner = AnsibleRunner("kanagawa01")
@@ -140,7 +145,17 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
 
             runner = self.build_runner(ansible_root)
 
-            self.assertEqual(runner._missing_collections(), ["community.mysql"])
+            self.assertEqual(runner._missing_collections(), ["ansible.mysql"])
+
+    def test_outdated_collection_is_reported_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(ansible_root)
+            self.install_collection(ansible_root, version="3.9.9")
+
+            runner = self.build_runner(ansible_root)
+
+            self.assertEqual(runner._missing_collections(), ["ansible.mysql"])
 
     def test_installed_collection_is_not_reported_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -173,6 +188,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
                 "install",
                 "--timeout",
                 "30",
+                "--upgrade",
                 "-r",
                 "collections/requirements.yml",
                 "-p",
