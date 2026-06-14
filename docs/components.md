@@ -12,15 +12,14 @@ The steady-state entrypoint is:
 atlas run infra check --site kanagawa01
 ```
 
-Public compatibility playbook names still exist for focused runs:
+Focused runs use the normal `site` playbook plus `--limit`. `cloudflare` is the
+only explicit host-side component playbook outside normal `site` because apply
+runs require operator-provided tunnel tokens:
 
 ```bash
-atlas run infra check --site kanagawa01 --playbook baseline
-atlas run infra check --site kanagawa01 --playbook dns
-atlas run infra check --site kanagawa01 --playbook monitoring
-atlas run infra check --site kanagawa01 --playbook containers
+atlas run infra check --site kanagawa01 --limit svc_dns_recursive
+atlas run infra check --site kanagawa01 --limit cap_control_node
 atlas run infra check --site kanagawa01 --playbook cloudflare
-atlas run infra check --site kanagawa01 --playbook atlas
 ```
 
 `cloudflare` is intentionally explicit and is not imported into `site.yml`.
@@ -39,11 +38,8 @@ operators should target that playbook deliberately.
 | `dns_authoritative` | `dns_authoritative_enabled` | Installs and minimally configures NSD. It starts the service only when zones are explicitly provided. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `zabbix_agent` | `zabbix_agent_enabled` | Installs and configures `zabbix-agent2` on managed hosts. |
-| `middleware/caddy` | `zabbix_server_installation_managed` | Installs Caddy for the managed Zabbix frontend. |
-| `middleware/mysql-server` | `mysql_server_enabled` or `zabbix_server_installation_managed` | Installs MySQL, manages server config, and provisions workload-defined databases and users. |
-| `middleware/zabbix-server` | `zabbix_server_installation_managed` | Installs Zabbix server/frontend packages, imports the Zabbix schema, configures PHP-FPM, renders a Caddyfile, and removes the legacy Zabbix nginx config. |
-| `docker_host` | `docker_host_enabled` | Prepares Docker hosts only when explicitly enabled. No application containers are deployed. |
-| `vector_agent` | `vector_agent_enabled` | Reserved skeleton for future log forwarding. It does not configure external sinks. |
+| `services/mysql` | `mysql_server_enabled` | Converges the shared MySQL data service using the reusable MySQL server internals. |
+| `services/zabbix` | `zabbix_server_installation_managed` | Converges the managed Zabbix host using local MySQL, Caddy, PHP-FPM, and Zabbix server/frontend internals. |
 
 All risky roles default to disabled. Host vars opt a host into the components it
 should run.
@@ -171,12 +167,10 @@ On the control node, use:
 
 ```bash
 atlas run infra inventory --site kanagawa01
-atlas run infra check --site kanagawa01 --playbook baseline --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook dns --limit kng01-mgmt-recdns-01
+atlas run infra check --site kanagawa01 --limit kng01-mgmt-recdns-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-connector-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
-atlas run infra check --site kanagawa01 --playbook monitoring --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra check --site kanagawa01 --limit kng01-mgmt-control-01
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01
