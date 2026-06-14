@@ -1,0 +1,103 @@
+---
+- name: Skip Zabbix registration when disabled
+  ansible.builtin.debug:
+    msg: "Zabbix registration is disabled."
+  when: not zabbix_registration_enabled | bool
+
+- name: Validate Zabbix registration API inputs
+  ansible.builtin.assert:
+    that:
+      - zabbix_api_url | length > 0
+      - zabbix_api_token | length > 0
+    fail_msg: >-
+      zabbix_api_url and zabbix_api_token are required when
+      zabbix_registration_enabled is true.
+  no_log: true
+  when: zabbix_registration_enabled | bool
+
+- name: Initialize Zabbix registration inventory projection
+  ansible.builtin.set_fact:
+    zabbix_registration_inventory_hosts: []
+  when: zabbix_registration_enabled | bool
+
+- name: Collect managed inventory hosts for Zabbix registration
+  ansible.builtin.set_fact:
+    zabbix_registration_inventory_hosts: >-
+      {{ zabbix_registration_inventory_hosts + [zabbix_registration_host_candidate] }}
+  vars:
+    zabbix_registration_hostvars: "{{ hostvars[item] }}"
+    zabbix_registration_host_candidate:
+      inventory_hostname: "{{ item }}"
+      ansible_host: "{{ zabbix_registration_hostvars.ansible_host | default('') }}"
+      zabbix_hostname: "{{ zabbix_registration_hostvars.zabbix_hostname | default(item) }}"
+      zabbix_visible_name: >-
+        {{ zabbix_registration_hostvars.zabbix_visible_name | default(item) }}
+      site: "{{ zabbix_registration_hostvars.site | default('') }}"
+      site_name: "{{ zabbix_registration_hostvars.site_name | default(site_name | default('')) }}"
+      site_short_name: >-
+        {{ zabbix_registration_hostvars.site_short_name | default(site_short_name | default('')) }}
+      zone: "{{ zabbix_registration_hostvars.zone | default('') }}"
+      network_zone: >-
+        {{ zabbix_registration_hostvars.network_zone | default(network_zone | default('')) }}
+      role: "{{ zabbix_registration_hostvars.role | default('') }}"
+      group_names: "{{ zabbix_registration_hostvars.group_names | default([]) }}"
+      network_address: "{{ zabbix_registration_hostvars.network_address | default('') }}"
+      network_ipv4_address: >-
+        {{ zabbix_registration_hostvars.network_ipv4_address | default('') }}
+      network_primary_fqdn: >-
+        {{ zabbix_registration_hostvars.network_primary_fqdn | default('') }}
+      network_service_aliases: >-
+        {{ zabbix_registration_hostvars.network_service_aliases | default([]) }}
+      zabbix_managed: >-
+        {{
+          zabbix_registration_hostvars.zabbix_managed |
+          default(zabbix_registration_hostvars.zabbix_agent_enabled | default(false))
+        }}
+      zabbix_host_groups: >-
+        {{ zabbix_registration_hostvars.zabbix_host_groups | default(none) }}
+      zabbix_templates: >-
+        {{ zabbix_registration_hostvars.zabbix_templates | default(none) }}
+      zabbix_tags: "{{ zabbix_registration_hostvars.zabbix_tags | default(none) }}"
+      zabbix_agent_interface: >-
+        {{ zabbix_registration_hostvars.zabbix_agent_interface | default({}) }}
+  loop: "{{ groups[zabbix_registration_inventory_group] | default(groups.all | default([])) | sort }}"
+  when:
+    - zabbix_registration_enabled | bool
+    - item != inventory_hostname
+    - >-
+      (
+        zabbix_registration_hostvars.zabbix_managed |
+        default(zabbix_registration_hostvars.zabbix_agent_enabled | default(false))
+      ) | bool
+
+- name: Synchronize Zabbix registration from Daedalus inventory
+  zabbix_registration:
+    api_url: "{{ zabbix_api_url }}"
+    api_token: "{{ zabbix_api_token }}"
+    validate_certs: "{{ zabbix_api_validate_certs }}"
+    timeout: "{{ zabbix_api_timeout }}"
+    hosts: "{{ zabbix_registration_inventory_hosts }}"
+    default_templates: "{{ zabbix_templates }}"
+    service_templates: "{{ zabbix_registration_service_templates }}"
+    default_tags: "{{ zabbix_tags }}"
+    default_agent_interface: "{{ zabbix_agent_interface }}"
+  register: zabbix_registration_result
+  when: zabbix_registration_enabled | bool
+
+- name: Show Zabbix registration changes
+  ansible.builtin.debug:
+    var: zabbix_registration_result.actions
+  when:
+    - zabbix_registration_enabled | bool
+    - zabbix_registration_result is defined
+    - zabbix_registration_result.actions | length > 0
+
+- name: Show Zabbix registration no-op summary
+  ansible.builtin.debug:
+    msg: >-
+      Zabbix registration is already synchronized for
+      {{ zabbix_registration_result.managed_hosts | length }} managed host(s).
+  when:
+    - zabbix_registration_enabled | bool
+    - zabbix_registration_result is defined
+    - zabbix_registration_result.actions | length == 0

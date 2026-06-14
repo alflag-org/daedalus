@@ -125,6 +125,8 @@ Focused component playbooks can still be requested explicitly with
 accepted as temporary compatibility aliases. `cloudflare` is also available as
 an explicit host-side component playbook, but it is not imported into the normal
 `site` converge.
+`services/zabbix-registration` is an explicit controller-local API playbook for
+syncing Daedalus-managed hosts into Zabbix.
 
 Reachability:
 
@@ -233,6 +235,17 @@ For KANAGAWA01, the default path is `~/.config/daedalus/kanagawa01.yml`.
 Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` to use a different file.
 Explicit `--extra-vars` values are still supported and are passed after the
 auto-loaded file.
+
+For Zabbix host registration, keep `zabbix_api_token` in the operator vars file
+and run the dedicated playbook:
+
+```bash
+infra check --site kanagawa01 --playbook services/zabbix-registration
+infra apply --yes --site kanagawa01 --playbook services/zabbix-registration
+```
+
+Daedalus inventory and host_vars are the source of truth for managed Zabbix
+host registration. Avoid manual Zabbix UI registration for those hosts.
 
 ## Local Development
 

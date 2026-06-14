@@ -1,0 +1,12 @@
+---
+- name: Synchronize Zabbix host registration
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  vars:
+    zabbix_registration_enabled: true
+
+  roles:
+    - role: zabbix_registration

@@ -44,6 +44,7 @@ operators should target that playbook deliberately.
 | `middleware/zabbix-server` | `zabbix_server_installation_managed` | Installs Zabbix server/frontend packages, configures PHP-FPM, renders a Caddyfile, and removes the legacy Zabbix nginx config. |
 | `docker_host` | `docker_host_enabled` | Prepares Docker hosts only when explicitly enabled. No application containers are deployed. |
 | `vector_agent` | `vector_agent_enabled` | Reserved skeleton for future log forwarding. It does not configure external sinks. |
+| `zabbix_registration` | `zabbix_registration_enabled` | Controller-local Zabbix API registration for managed inventory hosts. See [Zabbix Registration](zabbix-registration.md). |
 
 All risky roles default to disabled. Host vars opt a host into the components it
 should run.
@@ -136,7 +137,7 @@ Daedalus does not currently manage:
 - Cloudflare tunnel tokens
 - Cloudflare private hostnames
 - Cloudflare dashboard state
-- Zabbix application objects, templates, users, or dashboard content
+- Zabbix users, notifications, actions, media types, or dashboard content
 - plaintext Zabbix database secret storage
 - Prometheus, Grafana, or Alertmanager deployment
 - application containers
@@ -158,6 +159,7 @@ atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
 atlas run infra check --site kanagawa01 --playbook monitoring --limit kng01-mgmt-recdns-01
 atlas run infra check --site kanagawa01 --playbook atlas --limit kng01-mgmt-control-01
+atlas run infra check --site kanagawa01 --playbook services/zabbix-registration
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01

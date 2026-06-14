@@ -4,3 +4,5 @@ site_short_name: kng01
 
 ansible_user: ops
 ansible_become: true
+
+zabbix_api_url: http://zabbix.alflag.internal/api_jsonrpc.php

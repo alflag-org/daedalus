@@ -21,6 +21,8 @@ target with `--limit <inventory-group-or-host>` when needed. Reserve
 Use `--playbook cloudflare` deliberately for host-side Cloudflare components;
 it is not part of the default `site` converge because connector hosts require
 operator-provided tunnel tokens for apply runs.
+Use `--playbook services/zabbix-registration` deliberately for controller-local
+Zabbix API registration; it is not part of the default `site` converge.
 
 `apply` is the only mutating action and requires `--yes`. Run `check` or `diff`
 first unless there is a clear operational reason not to.
@@ -77,3 +79,22 @@ discarded, add this one-time operator var and rerun the targeted apply:
 ```yaml
 zabbix_server_recreate_partial_schema: true
 ```
+
+For Zabbix host registration, apply and check runs require a Zabbix API token in
+the same operator vars path:
+
+```yaml
+zabbix_api_token: ...
+```
+
+Then run the registration playbook explicitly:
+
+```bash
+atlas run infra check --site kanagawa01 --playbook services/zabbix-registration
+atlas run infra apply --yes --site kanagawa01 --playbook services/zabbix-registration
+```
+
+Daedalus inventory is the source of truth for managed Zabbix hosts. Do not
+manually register those hosts in the Zabbix UI; see
+[Zabbix Registration](zabbix-registration.md) for the scope and no-delete
+boundary.
