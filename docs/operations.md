@@ -70,7 +70,7 @@ Then normal targeted runs do not need a repeated `--extra-vars` argument:
 atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
 ```
 
-The shared MySQL data service at `kng01-mgmt-mysql-01` currently has no
+The shared MySQL data service at `kng01-mgmt-mysql-shared-01` currently has no
 workload databases or users declared, so it does not require an operator secret
 by default. When adding a consumer, declare its database/user entries through
 `mysql_server_databases` and `mysql_server_users`, and list any required secret

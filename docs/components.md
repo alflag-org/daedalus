@@ -60,7 +60,7 @@ Current KANAGAWA01 component flags are:
 | `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-workbench-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-zabbix-01` | VM `ops + become` | Caddy-backed Zabbix server/frontend/local DB, Zabbix agent |
-| `kng01-mgmt-mysql-01` | VM `ops + become` | Shared MySQL data service, Zabbix agent |
+| `kng01-mgmt-mysql-shared-01` | VM `ops + become` | Shared MySQL data service, Zabbix agent |
 | `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
 
 The LXC connection policy reflects the current inventory state. VM hosts should
@@ -95,7 +95,7 @@ operator-provided database password. The VM is expected to exist before
 Daedalus runs; Daedalus manages the guest configuration after it is reachable at
 `10.10.10.250`.
 
-`kng01-mgmt-mysql-01` is the shared MySQL data service host in VLAN 110. The
+`kng01-mgmt-mysql-shared-01` is the shared MySQL data service host in VLAN 110. The
 inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
 `platform_vm`, and `svc_mysql`. Daedalus installs MySQL through
 `middleware/mysql-server`, binds it to `10.10.10.251`, and keeps database/user
@@ -123,7 +123,7 @@ migration are intentionally out of scope for this host definition.
 | `kng01-mgmt-authdns-01` | mgmt | 110 | `10.10.10.242/24` | `10.10.10.1` |
 | `kng01-mgmt-authdns-02` | mgmt | 110 | `10.10.10.243/24` | `10.10.10.1` |
 | `kng01-mgmt-zabbix-01` | mgmt | 110 | `10.10.10.250/24` | `10.10.10.1` |
-| `kng01-mgmt-mysql-01` | mgmt | 110 | `10.10.10.251/24` | `10.10.10.1` |
+| `kng01-mgmt-mysql-shared-01` | mgmt | 110 | `10.10.10.251/24` | `10.10.10.1` |
 | `kng01-dmz-web-01` | dmz | 130 | `10.10.30.21/24` | `10.10.30.1` |
 
 KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
@@ -139,8 +139,8 @@ these records in the authoritative internal DNS system:
 | --- | --- | --- |
 | `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
 | `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
-| `kng01-mgmt-mysql-01.srv.alflag.internal` | A | `10.10.10.251` |
-| `mysql.alflag.internal` | CNAME | `kng01-mgmt-mysql-01.srv.alflag.internal` |
+| `kng01-mgmt-mysql-shared-01.srv.alflag.internal` | A | `10.10.10.251` |
+| `mysql.alflag.internal` | CNAME | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` |
 
 ## External State
 
@@ -175,9 +175,9 @@ atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01
 curl http://zabbix.alflag.internal/
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-mysql-01
-atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-mysql-01
-atlas run infra check --site kanagawa01 --limit kng01-mgmt-mysql-01
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-mysql-shared-01
+atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-mysql-shared-01
+atlas run infra check --site kanagawa01 --limit kng01-mgmt-mysql-shared-01
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01

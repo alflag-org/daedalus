@@ -220,8 +220,8 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
 
         inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
         kanagawa01 = inventory["all"]["children"]["kanagawa01"]["children"]
-        self.assertIn("kng01-mgmt-mysql-01", kanagawa01["svc_mysql"]["hosts"])
-        self.assertIn("kng01-mgmt-mysql-01", kanagawa01["platform_vm"]["hosts"])
+        self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["svc_mysql"]["hosts"])
+        self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["platform_vm"]["hosts"])
 
 
 if __name__ == "__main__":
