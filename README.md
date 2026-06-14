@@ -200,7 +200,7 @@ private_key_file = ~/.ssh/infra
 remote_user = ops
 host_key_checking = False
 pipelining = True
-ssh_args = -o ForwardAgent=yes
+ssh_args = -C -o ControlMaster=auto -o ControlPersist=60s -o ForwardAgent=no -o IdentitiesOnly=yes -o IdentityAgent=none
 ```
 
 The steady-state connection model is `ops` plus `become`. Hosts bootstrap
