@@ -258,8 +258,9 @@ auto-loaded file.
 Install the Python package in editable mode when working without Atlas:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pip install -e .
-python -m unittest discover -s tests
+python -m pytest -q
 infra sites
 infra playbooks
 infra inventory
@@ -267,6 +268,18 @@ infra inventory
 
 Runtime dependencies are in `requirements.txt`. Development-only tools are in
 `requirements-dev.txt`.
+
+CI runs the same Python test suite on Python 3.12 and 3.13, then performs
+non-mutating Ansible playbook syntax checks. To run the Ansible syntax checks
+locally:
+
+```bash
+cd ansible
+ansible-galaxy collection install -r collections/requirements.yml -p collections
+ansible-playbook --syntax-check playbooks/site.yml
+ansible-playbook --syntax-check playbooks/bootstrap.yml
+ansible-playbook --syntax-check playbooks/cloudflare.yml
+```
 
 ## Direct Ansible Execution
 

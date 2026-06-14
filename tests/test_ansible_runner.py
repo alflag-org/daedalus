@@ -7,7 +7,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from daedalus.ansible import AnsibleRunner
+from daedalus.ansible import AnsibleRunner, CollectionRequirement
 from daedalus.cli import Infra
 
 
@@ -239,6 +239,63 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
                 runner._ensure_collections({})
 
         run.assert_not_called()
+
+
+class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
+    def build_runner(self, ansible_root: Path) -> AnsibleRunner:
+        runner = AnsibleRunner("kanagawa01")
+        runner.ansible_root = ansible_root
+        return runner
+
+    def write_requirements(self, ansible_root: Path, contents: str) -> None:
+        collections = ansible_root / "collections"
+        collections.mkdir(parents=True)
+        (collections / "requirements.yml").write_text(contents, encoding="utf-8")
+
+    def test_required_collections_accepts_string_and_mapping_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(
+                ansible_root,
+                "---\ncollections:\n  - ansible.posix\n"
+                "  - name: ansible.mysql\n    version: '>=3.10.0,<6.0.0'\n",
+            )
+
+            requirements = self.build_runner(ansible_root)._required_collections()
+
+        self.assertEqual(
+            requirements,
+            [
+                CollectionRequirement(name="ansible.posix"),
+                CollectionRequirement(
+                    name="ansible.mysql",
+                    version=">=3.10.0,<6.0.0",
+                ),
+            ],
+        )
+
+    def test_required_collections_ignores_malformed_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ansible_root = Path(tempdir)
+            self.write_requirements(
+                ansible_root,
+                "---\ncollections:\n  - {}\n  - 42\n  - name: ''\n",
+            )
+
+            requirements = self.build_runner(ansible_root)._required_collections()
+
+        self.assertEqual(requirements, [])
+
+    def test_version_requirement_supports_compound_bounds(self) -> None:
+        self.assertTrue(
+            AnsibleRunner._version_satisfies("5.0.1", ">=3.10.0,<6.0.0")
+        )
+        self.assertFalse(
+            AnsibleRunner._version_satisfies("6.0.0", ">=3.10.0,<6.0.0")
+        )
+
+    def test_version_requirement_rejects_unknown_operators(self) -> None:
+        self.assertFalse(AnsibleRunner._version_satisfies("5.0.1", "~=5.0"))
 
 
 class InfraPlaybooksTest(unittest.TestCase):
