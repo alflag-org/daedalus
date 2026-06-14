@@ -22,7 +22,6 @@ ansible/
     bootstrap.yml
     cloudflare.yml
     components/
-    compat/
   roles/
     ssh_server/
     cloudflared/
@@ -31,12 +30,9 @@ ansible/
     dns_recursor/
     dns_authoritative/
     zabbix_agent/
-    docker_host/
-    vector_agent/
     foundation/
     control/
     services/
-    legacy/
     common/        # transitional implementation details
     middleware/    # transitional implementation details
   collections/
@@ -58,10 +54,10 @@ Within `ansible/`, the boundaries are:
 - `inventories/`: source of truth for host responsibility and group membership
 - `playbooks/site.yml`: steady-state site converge entrypoint
 - `playbooks/bootstrap.yml`: first converge entrypoint for new Atlas-managed hosts
+- `playbooks/cloudflare.yml`: explicit host-side Cloudflare converge, outside normal `site`
 - `playbooks/components/`: internal composition layers
-- `playbooks/compat/`: temporary compatibility aliases for deprecated playbook names
 - `roles/foundation/`: host baseline and platform roles
 - `roles/control/`: Atlas control-plane roles
 - `roles/services/`: service-intent roles selected by `svc_*` inventory groups
 - `roles/<component>/`: component implementation roles selected by host vars
-- `roles/legacy/`: controller-local or not-yet-migrated roles excluded from normal site converge
+- `roles/middleware/`: transitional implementation details, not a public role surface

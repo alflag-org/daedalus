@@ -18,14 +18,15 @@ Current playbook structure:
 ```text
 ansible/playbooks/site.yml
 ansible/playbooks/bootstrap.yml
+ansible/playbooks/cloudflare.yml
 ansible/playbooks/components/
-ansible/playbooks/compat/
 ```
 
 `site.yml` is the steady-state converge entrypoint. `bootstrap.yml` is the
 first-converge entrypoint for a new Atlas-managed host. Deprecated playbook
-names such as `atlas`, `baseline`, and `dns` resolve through
-`ansible/playbooks/compat/` during the migration window.
+aliases such as `atlas`, `baseline`, `dns`, `monitoring`, and `containers` have
+been removed; focused checks should use `site` with `--limit`, or a real
+top-level playbook such as `cloudflare`.
 
 The Python package was renamed from `alflag_infra` to `daedalus`. The operator
 command remains `infra`.

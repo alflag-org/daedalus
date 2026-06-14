@@ -3,15 +3,7 @@ from pathlib import Path
 
 DEFAULT_SITE = "kanagawa01"
 DEFAULT_PLAYBOOK = "site"
-PUBLIC_PLAYBOOKS = ("site", "bootstrap")
-DEPRECATED_PLAYBOOK_ALIASES = {
-    "atlas": "compat/atlas.yml",
-    "baseline": "compat/baseline.yml",
-    "cloudflare": "compat/cloudflare.yml",
-    "dns": "compat/dns.yml",
-    "monitoring": "compat/monitoring.yml",
-    "containers": "compat/containers.yml",
-}
+PUBLIC_PLAYBOOKS = ("site", "bootstrap", "cloudflare")
 
 
 def repo_root() -> Path:
@@ -40,13 +32,7 @@ def playbook_path(playbook: str) -> Path:
     if path.is_file():
         return path
 
-    deprecated_path = DEPRECATED_PLAYBOOK_ALIASES.get(requested)
-    if deprecated_path:
-        path = playbook_dir / deprecated_path
-        if path.is_file():
-            return path
-
-    raise RuntimeError(f"Unknown playbook '{playbook}': no playbook or compatibility alias matched")
+    raise RuntimeError(f"Unknown playbook '{playbook}': no playbook matched")
 
 
 def sites() -> list[str]:
@@ -65,10 +51,6 @@ def public_playbooks() -> list[str]:
     if not playbook_dir.is_dir():
         return []
     return [name for name in PUBLIC_PLAYBOOKS if (playbook_dir / f"{name}.yml").is_file()]
-
-
-def deprecated_playbook_aliases() -> dict[str, str]:
-    return dict(DEPRECATED_PLAYBOOK_ALIASES)
 
 
 def playbooks() -> list[str]:

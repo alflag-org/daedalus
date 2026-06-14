@@ -11,6 +11,27 @@ Daedalus = Atlas-operated infrastructure configuration runner
 Atlas owns the script runtime, command shims, and run logs. Daedalus owns the
 Ansible backend and the small `infra` command wrapper that invokes it.
 
+## Responsibility Boundary
+
+Daedalus is limited to the KANAGAWA01 real-host convergence layer. Atlas owns
+runtime installation, command execution, release distribution, and run logs;
+Daedalus owns Ansible host state for the current home infrastructure.
+
+Daedalus is not a general-purpose Ansible role collection. Application-specific
+operations, old experiments, and historical Minecraft, Pterodactyl, or Dify
+automation belong outside this repository. Future services should be added only
+when they are part of the current converge path.
+
+The normal converge path is:
+
+```text
+foundation -> control-plane -> services
+```
+
+The accepted network zones are `CLIENT`, `MGMT`, `DMZ`, `TRANSIT`, and
+`UNUSED_NATIVE`. Inventory should contain real hosts and real current network
+groups only.
+
 ## Layout
 
 Daedalus keeps the Atlas release interface at the repository root:
@@ -31,13 +52,12 @@ ansible/
   playbooks/
     site.yml
     bootstrap.yml
+    cloudflare.yml
     components/
-    compat/
   roles/
     foundation/
     control/
     services/
-    legacy/
     common/        # transitional implementation details
     middleware/    # transitional implementation details
   collections/
@@ -121,10 +141,9 @@ infra inventory --site kanagawa01
 - `bootstrap`: first converge for a newly added Atlas-managed host
 
 Focused component playbooks can still be requested explicitly with
-`--playbook`. `atlas`, `baseline`, `dns`, `monitoring`, and `containers` remain
-accepted as temporary compatibility aliases. `cloudflare` is also available as
-an explicit host-side component playbook, but it is not imported into the normal
-`site` converge.
+`--playbook` when a top-level playbook exists. `cloudflare` is available as an
+explicit host-side component playbook, but it is not imported into the normal
+`site` converge because apply runs require operator-provided tunnel tokens.
 
 Reachability:
 
