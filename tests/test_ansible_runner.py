@@ -2,10 +2,13 @@ import os
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 from daedalus.ansible import AnsibleRunner
+from daedalus.cli import Infra
 
 
 class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
@@ -236,6 +239,19 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
                 runner._ensure_collections({})
 
         run.assert_not_called()
+
+
+class InfraPlaybooksTest(unittest.TestCase):
+    def test_playbooks_lists_public_entrypoints(self) -> None:
+        output = StringIO()
+
+        with redirect_stdout(output):
+            Infra().playbooks()
+
+        self.assertEqual(
+            output.getvalue().splitlines(),
+            ["site", "bootstrap", "cloudflare"],
+        )
 
 
 if __name__ == "__main__":

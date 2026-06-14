@@ -3,7 +3,7 @@ from pathlib import Path
 
 DEFAULT_SITE = "kanagawa01"
 DEFAULT_PLAYBOOK = "site"
-PUBLIC_PLAYBOOKS = ("site", "bootstrap")
+PUBLIC_PLAYBOOKS = ("site", "bootstrap", "cloudflare")
 
 
 def repo_root() -> Path:
