@@ -32,6 +32,7 @@ class CiWorkflowTest(unittest.TestCase):
             step["run"] for step in test_job["steps"] if "run" in step
         )
         self.assertIn("python -m pip install -r requirements-dev.txt", run_steps)
+        self.assertIn("python -m pip install -e .", run_steps)
         self.assertIn("pytest -q", run_steps)
 
     def test_ansible_syntax_job_checks_public_playbooks(self) -> None:
