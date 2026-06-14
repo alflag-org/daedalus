@@ -22,16 +22,21 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
 
     def test_mysql_server_uses_socket_root_management(self) -> None:
         tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/install.yml")
+        defaults = load_yaml("ansible/roles/middleware/mysql-server/defaults/main.yml")
         by_name = {task["name"]: task for task in tasks}
 
         self.assertNotIn("Set Root Password", by_name)
         self.assertIn(
             "python3-cryptography",
+            defaults["mysql_server_packages"],
+        )
+        self.assertEqual(
             by_name["Install mysql-server"]["ansible.builtin.apt"]["name"],
+            "{{ mysql_server_packages }}",
         )
 
         anonymous_user = by_name["Remove anonymous users"]["ansible.mysql.mysql_user"]
-        self.assertEqual(anonymous_user["login_user"], "root")
+        self.assertEqual(anonymous_user["login_user"], "{{ mysql_login_user }}")
         self.assertEqual(
             anonymous_user["login_unix_socket"],
             "{{ mysql_login_unix_socket }}",
@@ -39,19 +44,49 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertNotIn("login_password", anonymous_user)
         self.assertTrue(anonymous_user["host_all"])
 
-    def test_zabbix_mysql_users_use_caching_sha2_password(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
-        by_name = {task["name"]: task for task in tasks}
+    def test_mysql_server_manages_databases_and_users_from_variables(self) -> None:
+        database_tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/databases.yml")
+        user_tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/users.yml")
 
-        zabbix_user = by_name["Create Zabbix User"]["ansible.mysql.mysql_user"]
-        monitor_user = by_name["Create zabbix_monitor User"]["ansible.mysql.mysql_user"]
+        database = database_tasks[0]["ansible.mysql.mysql_db"]
+        user = user_tasks[0]["ansible.mysql.mysql_user"]
 
-        for user in (zabbix_user, monitor_user):
-            self.assertEqual(user["login_user"], "root")
-            self.assertEqual(user["plugin"], "{{ mysql_zabbix_auth_plugin }}")
-            self.assertNotIn("login_password", user)
-            self.assertNotIn("password", user)
+        self.assertEqual(database["login_user"], "{{ mysql_login_user }}")
+        self.assertEqual(database["login_unix_socket"], "{{ mysql_login_unix_socket }}")
+        self.assertEqual(database["name"], "{{ item.name }}")
+        self.assertEqual(database["encoding"], "{{ item.encoding | default(omit) }}")
+        self.assertEqual(database["collation"], "{{ item.collation | default(omit) }}")
 
+        self.assertEqual(user["login_user"], "{{ mysql_login_user }}")
+        self.assertEqual(user["login_unix_socket"], "{{ mysql_login_unix_socket }}")
+        self.assertEqual(user["plugin"], "{{ item.plugin | default(omit) }}")
+        self.assertEqual(
+            user["plugin_auth_string"],
+            "{{ item.plugin_auth_string | default(omit) }}",
+        )
+        self.assertNotIn("login_password", user)
+        self.assertNotIn("password", user)
+
+    def test_zabbix_workload_supplies_mysql_database_and_users(self) -> None:
+        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_zabbix.yml")
+
+        self.assertEqual(
+            group_vars["mysql_server_required_secret_vars"],
+            ["mysql_zabbix_password", "mysql_zabbix_monitor_password"],
+        )
+        self.assertEqual(
+            group_vars["mysql_server_databases"],
+            [
+                {
+                    "name": "{{ mysql_zabbix_dbname }}",
+                    "encoding": "utf8mb4",
+                    "collation": "utf8mb4_bin",
+                }
+            ],
+        )
+
+        zabbix_user, monitor_user = group_vars["mysql_server_users"]
+        self.assertEqual(zabbix_user["plugin"], "{{ mysql_zabbix_auth_plugin }}")
         self.assertEqual(zabbix_user["plugin_auth_string"], "{{ mysql_zabbix_password }}")
         self.assertEqual(zabbix_user["salt"], "{{ mysql_zabbix_password_salt }}")
         self.assertEqual(
@@ -64,13 +99,15 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_zabbix_mysql_defaults_use_valid_auth_salts(self) -> None:
-        defaults = load_yaml("ansible/roles/middleware/zabbix-server/defaults/main.yml")
+        defaults = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_zabbix.yml")
 
         self.assertEqual(defaults["mysql_zabbix_auth_plugin"], "caching_sha2_password")
         self.assertEqual(len(defaults["mysql_zabbix_password_salt"]), 20)
         self.assertEqual(len(defaults["mysql_zabbix_monitor_password_salt"]), 20)
-        self.assertEqual(defaults["zabbix_server_mysql_schema_min_trigger_count"], 65)
-        self.assertFalse(defaults["zabbix_server_recreate_partial_schema"])
+
+        zabbix_defaults = load_yaml("ansible/roles/middleware/zabbix-server/defaults/main.yml")
+        self.assertEqual(zabbix_defaults["zabbix_server_mysql_schema_min_trigger_count"], 65)
+        self.assertFalse(zabbix_defaults["zabbix_server_recreate_partial_schema"])
 
     def test_preflight_no_longer_requires_mysql_root_password(self) -> None:
         tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/preflight.yml")
@@ -81,11 +118,11 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
 
         self.assertEqual(
             secret_check["loop"],
-            ["mysql_zabbix_password", "mysql_zabbix_monitor_password"],
+            ["mysql_zabbix_password"],
         )
 
     def test_zabbix_schema_status_checks_triggers(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
         schema_status = {
             task["name"]: task
             for task in tasks
@@ -96,7 +133,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertIn("trigger_count", schema_status["query"])
 
     def test_partial_zabbix_schema_requires_explicit_reset(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
         by_name = {task["name"]: task for task in tasks}
 
         reset = by_name["Reset partial Zabbix database schema when explicitly requested"]
@@ -110,29 +147,39 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_schema_import_temporarily_trusts_function_creators(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
         import_block = {
             task["name"]: task
             for task in tasks
         }["Import Zabbix initial schema"]
 
-        enable = import_block["block"][0]["ansible.mysql.mysql_query"]
+        import_tasks = {task["name"]: task for task in import_block["block"]}
+        enable = import_tasks[
+            "Enable trusted function creators for Zabbix schema import"
+        ]["ansible.mysql.mysql_query"]
         disable = import_block["always"][0]["ansible.mysql.mysql_query"]
-        schema_import = import_block["block"][1]["ansible.mysql.mysql_db"]
+        schema_import = import_tasks[
+            "Import Zabbix initial schema"
+        ]["ansible.mysql.mysql_db"]
 
         self.assertEqual(
             enable["query"],
             "SET GLOBAL log_bin_trust_function_creators = 1",
         )
+        restored_query = " ".join(disable["query"].split())
         self.assertEqual(
-            disable["query"],
-            "SET GLOBAL log_bin_trust_function_creators = 0",
+            restored_query,
+            (
+                "SET GLOBAL log_bin_trust_function_creators = "
+                "{{ zabbix_server_trusted_function_creators_status.query_result[0][0]."
+                "log_bin_trust_function_creators | int }}"
+            ),
         )
         self.assertEqual(schema_import["state"], "import")
         self.assertEqual(schema_import["target"], "{{ zabbix_server_mysql_schema_path }}")
 
     def test_schema_import_validates_trigger_count(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
         by_name = {task["name"]: task for task in tasks}
 
         trigger_status = by_name["Check imported Zabbix schema trigger status"]
@@ -146,6 +193,35 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
             "zabbix_server_mysql_schema_min_trigger_count",
             validation["ansible.builtin.assert"]["that"][0],
         )
+
+    def test_zabbix_role_no_longer_owns_mysql_server_configuration(self) -> None:
+        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        self.assertEqual(
+            tasks,
+            [
+                {
+                    "name": "Manage Zabbix database schema",
+                    "ansible.builtin.include_tasks": {"file": "mysql_schema.yml"},
+                }
+            ],
+        )
+
+    def test_shared_mysql_service_is_composed_under_services(self) -> None:
+        services = load_yaml("ansible/playbooks/components/services.yml")
+        imports = [
+            play["ansible.builtin.import_playbook"]
+            for play in services
+            if "ansible.builtin.import_playbook" in play
+        ]
+        self.assertIn("services/mysql.yml", imports)
+
+        mysql_playbook = load_yaml("ansible/playbooks/components/services/mysql.yml")
+        self.assertEqual(mysql_playbook[0]["hosts"], "svc_mysql")
+
+        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
+        kanagawa01 = inventory["all"]["children"]["kanagawa01"]["children"]
+        self.assertIn("kng01-mgmt-mysql-01", kanagawa01["svc_mysql"]["hosts"])
+        self.assertIn("kng01-mgmt-mysql-01", kanagawa01["platform_vm"]["hosts"])
 
 
 if __name__ == "__main__":

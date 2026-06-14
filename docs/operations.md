@@ -42,7 +42,8 @@ Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` when an operator run needs a
 different file. Explicit `--extra-vars` still works and is applied after the
 auto-loaded file.
 
-For the managed Zabbix server, apply runs require these database variables:
+For the managed Zabbix server, apply runs require these workload database
+variables:
 
 ```yaml
 mysql_zabbix_password: ...
@@ -68,6 +69,12 @@ Then normal targeted runs do not need a repeated `--extra-vars` argument:
 ```bash
 atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
 ```
+
+The shared MySQL data service at `kng01-mgmt-mysql-01` currently has no
+workload databases or users declared, so it does not require an operator secret
+by default. When adding a consumer, declare its database/user entries through
+`mysql_server_databases` and `mysql_server_users`, and list any required secret
+variable names in `mysql_server_required_secret_vars`.
 
 If the initial Zabbix schema import fails partway through a fresh provisioning
 run, the next apply stops when it detects the partial database instead of

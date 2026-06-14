@@ -40,8 +40,8 @@ operators should target that playbook deliberately.
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `zabbix_agent` | `zabbix_agent_enabled` | Installs and configures `zabbix-agent2` on managed hosts. |
 | `middleware/caddy` | `zabbix_server_installation_managed` | Installs Caddy for the managed Zabbix frontend. |
-| `middleware/mysql-server` | `zabbix_server_installation_managed` | Installs local MySQL for the managed Zabbix service host. |
-| `middleware/zabbix-server` | `zabbix_server_installation_managed` | Installs Zabbix server/frontend packages, configures PHP-FPM, renders a Caddyfile, and removes the legacy Zabbix nginx config. |
+| `middleware/mysql-server` | `mysql_server_enabled` or `zabbix_server_installation_managed` | Installs MySQL, manages server config, and provisions workload-defined databases and users. |
+| `middleware/zabbix-server` | `zabbix_server_installation_managed` | Installs Zabbix server/frontend packages, imports the Zabbix schema, configures PHP-FPM, renders a Caddyfile, and removes the legacy Zabbix nginx config. |
 | `docker_host` | `docker_host_enabled` | Prepares Docker hosts only when explicitly enabled. No application containers are deployed. |
 | `vector_agent` | `vector_agent_enabled` | Reserved skeleton for future log forwarding. It does not configure external sinks. |
 
@@ -64,6 +64,7 @@ Current KANAGAWA01 component flags are:
 | `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-workbench-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
 | `kng01-mgmt-zabbix-01` | VM `ops + become` | Caddy-backed Zabbix server/frontend/local DB, Zabbix agent |
+| `kng01-mgmt-mysql-01` | VM `ops + become` | Shared MySQL data service, Zabbix agent |
 | `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
 
 The LXC connection policy reflects the current inventory state. VM hosts should
@@ -84,15 +85,30 @@ because monitoring and problem triage are management-plane responsibilities.
 The inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
 `platform_vm`, and `svc_zabbix`. Daedalus manages the VM foundation, SSH policy,
 systemd-resolved policy, `zabbix-agent2`, local MySQL, PHP-FPM, Caddy, and the
-Zabbix server/frontend packages for the host. The managed frontend listens on
-HTTP port 80 through Caddy and serves `zabbix.alflag.internal` via the host's
-normal management-plane address. Apply runs require the database secret vars
-`mysql_zabbix_password` and `mysql_zabbix_monitor_password` from the operator
-secret store, the site-local operator vars file loaded by `infra`, or
-operator-provided extra vars. The local MySQL root account is managed over the
-Unix socket and does not need an operator-provided database password. The VM is
-expected to exist before Daedalus runs; Daedalus manages the guest configuration
-after it is reachable at `10.10.10.250`.
+Zabbix server/frontend packages for the host. Zabbix consumes
+`middleware/mysql-server` as a workload-defined local database: `svc_zabbix`
+declares the Zabbix database, application user, and monitor user, while the
+Zabbix role owns only the Zabbix schema import and application configuration.
+The managed frontend listens on HTTP port 80 through Caddy and serves
+`zabbix.alflag.internal` via the host's normal management-plane address. Apply
+runs require the database secret vars `mysql_zabbix_password` and
+`mysql_zabbix_monitor_password` from the operator secret store, the site-local
+operator vars file loaded by `infra`, or operator-provided extra vars. The local
+MySQL root account is managed over the Unix socket and does not need an
+operator-provided database password. The VM is expected to exist before
+Daedalus runs; Daedalus manages the guest configuration after it is reachable at
+`10.10.10.250`.
+
+`kng01-mgmt-mysql-01` is the shared MySQL data service host in VLAN 110. The
+inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
+`platform_vm`, and `svc_mysql`. Daedalus installs MySQL through
+`middleware/mysql-server`, binds it to `10.10.10.251`, and keeps database/user
+provisioning driven by `mysql_server_databases` and `mysql_server_users`. Those
+lists are intentionally empty at introduction time; add workload-specific
+databases, users, and required secret vars to `svc_mysql` or narrower inventory
+vars when a consumer is ready. The VM is expected to exist before Daedalus runs;
+Daedalus manages the guest configuration after it is reachable at
+`10.10.10.251`.
 
 Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
 migration are intentionally out of scope for this host definition.
@@ -111,6 +127,7 @@ migration are intentionally out of scope for this host definition.
 | `kng01-mgmt-authdns-01` | mgmt | 110 | `10.10.10.242/24` | `10.10.10.1` |
 | `kng01-mgmt-authdns-02` | mgmt | 110 | `10.10.10.243/24` | `10.10.10.1` |
 | `kng01-mgmt-zabbix-01` | mgmt | 110 | `10.10.10.250/24` | `10.10.10.1` |
+| `kng01-mgmt-mysql-01` | mgmt | 110 | `10.10.10.251/24` | `10.10.10.1` |
 | `kng01-dmz-web-01` | dmz | 130 | `10.10.30.21/24` | `10.10.30.1` |
 
 KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
@@ -126,6 +143,8 @@ these records in the authoritative internal DNS system:
 | --- | --- | --- |
 | `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
 | `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
+| `kng01-mgmt-mysql-01.srv.alflag.internal` | A | `10.10.10.251` |
+| `mysql.alflag.internal` | CNAME | `kng01-mgmt-mysql-01.srv.alflag.internal` |
 
 ## External State
 
@@ -162,6 +181,9 @@ atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
 atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01
 curl http://zabbix.alflag.internal/
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-mysql-01
+atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-mysql-01
+atlas run infra check --site kanagawa01 --limit kng01-mgmt-mysql-01
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
