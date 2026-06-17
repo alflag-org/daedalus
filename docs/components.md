@@ -140,7 +140,7 @@ these records in the authoritative internal DNS system:
 | `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
 | `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
 | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` | A | `10.10.10.221` |
-| `mysql.alflag.internal` | CNAME | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` |
+| `mysql-shared.srv.alflag.internal` | CNAME | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` |
 
 ## External State
 

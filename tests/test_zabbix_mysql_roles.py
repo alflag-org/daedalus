@@ -237,6 +237,39 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         host_vars = load_yaml(str(host_vars_path.relative_to(REPO_ROOT)))
         self.assertEqual(host_vars["hostname"], "kng01-mgmt-mysql-shared-01")
 
+    def test_mysql_shared_host_vars_match_inventory(self) -> None:
+        host_vars_path = (
+            REPO_ROOT
+            / "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
+        host_vars = load_yaml(str(host_vars_path.relative_to(REPO_ROOT)))
+
+        self.assertEqual(host_vars_path.stem, host_vars["hostname"])
+        self.assertEqual(host_vars["hostname"], "kng01-mgmt-mysql-shared-01")
+        self.assertEqual(host_vars["purpose"], "shared")
+        self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.221")
+        self.assertEqual(host_vars["network_address"], "10.10.10.221/24")
+        self.assertEqual(
+            host_vars["network_primary_fqdn"],
+            "kng01-mgmt-mysql-shared-01.srv.alflag.internal",
+        )
+        self.assertIn(
+            "mysql-shared.srv.alflag.internal",
+            host_vars["network_service_aliases"],
+        )
+        self.assertNotIn(
+            "mysql.alflag.internal",
+            host_vars["network_service_aliases"],
+        )
+
+    def test_docs_use_mysql_shared_alias(self) -> None:
+        components = (REPO_ROOT / "docs/components.md").read_text(encoding="utf-8")
+
+        self.assertIn("10.10.10.221", components)
+        self.assertIn("mysql-shared.srv.alflag.internal", components)
+        self.assertNotIn("10.10.10.251", components)
+        self.assertNotIn("mysql.alflag.internal", components)
+
 
 if __name__ == "__main__":
     unittest.main()
