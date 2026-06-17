@@ -98,13 +98,13 @@ Daedalus runs; Daedalus manages the guest configuration after it is reachable at
 `kng01-mgmt-mysql-shared-01` is the shared MySQL data service host in VLAN 110. The
 inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
 `platform_vm`, and `svc_mysql`. Daedalus installs MySQL through
-`middleware/mysql-server`, binds it to `10.10.10.251`, and keeps database/user
+`middleware/mysql-server`, binds it to `10.10.10.221`, and keeps database/user
 provisioning driven by `mysql_server_databases` and `mysql_server_users`. Those
 lists are intentionally empty at introduction time; add workload-specific
 databases, users, and required secret vars to `svc_mysql` or narrower inventory
 vars when a consumer is ready. The VM is expected to exist before Daedalus runs;
 Daedalus manages the guest configuration after it is reachable at
-`10.10.10.251`.
+`10.10.10.221`.
 
 Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
 migration are intentionally out of scope for this host definition.
@@ -123,7 +123,7 @@ migration are intentionally out of scope for this host definition.
 | `kng01-mgmt-authdns-01` | mgmt | 110 | `10.10.10.242/24` | `10.10.10.1` |
 | `kng01-mgmt-authdns-02` | mgmt | 110 | `10.10.10.243/24` | `10.10.10.1` |
 | `kng01-mgmt-zabbix-01` | mgmt | 110 | `10.10.10.250/24` | `10.10.10.1` |
-| `kng01-mgmt-mysql-shared-01` | mgmt | 110 | `10.10.10.251/24` | `10.10.10.1` |
+| `kng01-mgmt-mysql-shared-01` | mgmt | 110 | `10.10.10.221/24` | `10.10.10.1` |
 | `kng01-dmz-web-01` | dmz | 130 | `10.10.30.21/24` | `10.10.30.1` |
 
 KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
@@ -139,7 +139,7 @@ these records in the authoritative internal DNS system:
 | --- | --- | --- |
 | `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
 | `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
-| `kng01-mgmt-mysql-shared-01.srv.alflag.internal` | A | `10.10.10.251` |
+| `kng01-mgmt-mysql-shared-01.srv.alflag.internal` | A | `10.10.10.221` |
 | `mysql.alflag.internal` | CNAME | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` |
 
 ## External State
