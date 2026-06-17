@@ -223,6 +223,20 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["svc_mysql"]["hosts"])
         self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["platform_vm"]["hosts"])
 
+        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_mysql.yml")
+        self.assertEqual(
+            group_vars["mysql_server_bind_address"],
+            "{{ network_ipv4_address | default(ansible_host) }}",
+        )
+
+        host_vars_path = (
+            REPO_ROOT
+            / "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
+        self.assertTrue(host_vars_path.is_file())
+        host_vars = load_yaml(str(host_vars_path.relative_to(REPO_ROOT)))
+        self.assertEqual(host_vars["hostname"], "kng01-mgmt-mysql-shared-01")
+
 
 if __name__ == "__main__":
     unittest.main()
