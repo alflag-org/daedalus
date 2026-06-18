@@ -34,12 +34,12 @@ operators should target that playbook deliberately.
 | `cloudflared` | `cloudflared_enabled` | Installs cloudflared, writes a token environment file from operator-provided secret vars, installs the systemd service, and validates local service state. |
 | `cloudflare_ssh_target` | `cloudflare_ssh_enabled` | Ensures local SSH is available for Cloudflare Access SSH or Tunnel routing. It performs no Cloudflare API calls. |
 | `systemd_resolved` | `systemd_resolved_enabled` | Configures systemd-resolved. `/etc/resolv.conf` is managed only when `systemd_resolved_manage_resolv_conf` is true. |
-| `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts. |
-| `dns_authoritative` | `dns_authoritative_enabled` | Installs and minimally configures NSD. It starts the service only when zones are explicitly provided. |
+| `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts, including internal stub-zone or forward-zone metadata. |
+| `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from zone metadata. Zone record contents remain manually maintained unless explicit text is provided. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `zabbix_agent` | `zabbix_agent_enabled` | Installs and configures `zabbix-agent2` on managed hosts. |
-| `services/mysql` | `mysql_server_enabled` | Converges the shared MySQL data service using the reusable MySQL server internals. |
-| `services/zabbix` | `zabbix_server_installation_managed` | Converges the managed Zabbix host using local MySQL, Caddy, PHP-FPM, and Zabbix server/frontend internals. |
+| `services/mysql` | `mysql_server_enabled` | Converges the shared MySQL data service using private `components/mysql_server` internals. |
+| `services/zabbix` | `zabbix_server_installation_managed` | Converges the managed Zabbix host using private MySQL, Caddy, PHP-FPM, and Zabbix server/frontend component internals. |
 
 All risky roles default to disabled. Host vars opt a host into the components it
 should run.
@@ -58,7 +58,7 @@ Current KANAGAWA01 component flags are:
 | `kng01-mgmt-connector-01` | LXC root, no become | cloudflared, Zabbix agent |
 | `kng01-mgmt-connector-02` | LXC root, no become | cloudflared, Zabbix agent |
 | `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
-| `kng01-mgmt-workbench-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
+| `kng01-mgmt-workbench-01` | VM `ops + become` | SSH server, Cloudflare SSH target, systemd-resolved, Zabbix agent |
 | `kng01-mgmt-zabbix-01` | VM `ops + become` | Caddy-backed Zabbix server/frontend/local DB, Zabbix agent |
 | `kng01-mgmt-mysql-shared-01` | VM `ops + become` | Shared MySQL data service, Zabbix agent |
 | `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
@@ -66,6 +66,14 @@ Current KANAGAWA01 component flags are:
 The LXC connection policy reflects the current inventory state. VM hosts should
 use the normal `ops + become` model unless host-specific reality says
 otherwise.
+
+`kng01-mgmt-workbench-01` is a management-plane VM, not an LXC host. It remains
+in `kng01_mgmt`, `provider_proxmox`, and `svc_workbench`, and uses the standard
+VM connection model.
+
+`kng01-mgmt-bastion-01` remains operational. It is a future decommission
+candidate, but it stays in inventory and in `svc_bastion` until that removal is
+planned separately.
 
 `kng01-dmz-web-01` is the first DMZ Web origin host. It is registered in VLAN
 130 at `10.10.30.21/24` with gateway `10.10.30.1`. Its nginx origin binds to
@@ -82,7 +90,7 @@ The inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
 `platform_vm`, and `svc_zabbix`. Daedalus manages the VM foundation, SSH policy,
 systemd-resolved policy, `zabbix-agent2`, local MySQL, PHP-FPM, Caddy, and the
 Zabbix server/frontend packages for the host. Zabbix consumes
-`middleware/mysql-server` as a workload-defined local database: `svc_zabbix`
+`components/mysql_server` as a workload-defined local database: `svc_zabbix`
 declares the Zabbix database, application user, and monitor user, while the
 Zabbix role owns only the Zabbix schema import and application configuration.
 The managed frontend listens on HTTP port 80 through Caddy and serves
@@ -98,7 +106,7 @@ Daedalus runs; Daedalus manages the guest configuration after it is reachable at
 `kng01-mgmt-mysql-shared-01` is the shared MySQL data service host in VLAN 110. The
 inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
 `platform_vm`, and `svc_mysql`. Daedalus installs MySQL through
-`middleware/mysql-server`, binds it to `10.10.10.221`, and keeps database/user
+`components/mysql_server`, binds it to `10.10.10.221`, and keeps database/user
 provisioning driven by `mysql_server_databases` and `mysql_server_users`. Those
 lists are intentionally empty at introduction time; add workload-specific
 databases, users, and required secret vars to `svc_mysql` or narrower inventory
@@ -128,6 +136,18 @@ migration are intentionally out of scope for this host definition.
 
 KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
 `kng01-mgmt-zabbix-01` uses those resolver addresses in inventory metadata.
+
+## DNS Boundary
+
+Daedalus manages DNS server packages, service state, listen addresses, and host
+configuration. Recursive DNS hosts run Unbound and stub internal zones to the
+authoritative DNS hosts. Authoritative DNS hosts run NSD from zone registration
+metadata.
+
+Daedalus does not currently manage authoritative zone record contents. Zone
+files such as `/etc/nsd/zones/alflag.internal.zone` are manually maintained on
+the DNS hosts for now. See [docs/dns.md](dns.md) for the operational boundary
+and validation commands.
 
 ## Required Internal DNS Records
 

@@ -33,8 +33,7 @@ ansible/
     foundation/
     control/
     services/
-    common/        # transitional implementation details
-    middleware/    # transitional implementation details
+    components/    # private service implementation details
   collections/
 ```
 
@@ -59,5 +58,10 @@ Within `ansible/`, the boundaries are:
 - `roles/foundation/`: host baseline and platform roles
 - `roles/control/`: Atlas control-plane roles
 - `roles/services/`: service-intent roles selected by `svc_*` inventory groups
-- `roles/<component>/`: component implementation roles selected by host vars
-- `roles/middleware/`: transitional implementation details, not a public role surface
+- `roles/components/`: private service implementation roles used by `roles/services/`
+- top-level component roles such as `ssh_server`, `dns_recursor`, and
+  `zabbix_agent`: host-side components selected by inventory flags
+
+`roles/common/` and `roles/middleware/` are not active role surfaces. Their
+former responsibilities have either moved into explicit `foundation/*` roles or
+private `components/*` implementation roles.
