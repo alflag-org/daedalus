@@ -21,8 +21,8 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_mysql_server_uses_socket_root_management(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/install.yml")
-        defaults = load_yaml("ansible/roles/middleware/mysql-server/defaults/main.yml")
+        tasks = load_yaml("ansible/roles/components/mysql_server/tasks/install.yml")
+        defaults = load_yaml("ansible/roles/components/mysql_server/defaults/main.yml")
         by_name = {task["name"]: task for task in tasks}
 
         self.assertNotIn("Set Root Password", by_name)
@@ -45,8 +45,8 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertTrue(anonymous_user["host_all"])
 
     def test_mysql_server_manages_databases_and_users_from_variables(self) -> None:
-        database_tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/databases.yml")
-        user_tasks = load_yaml("ansible/roles/middleware/mysql-server/tasks/users.yml")
+        database_tasks = load_yaml("ansible/roles/components/mysql_server/tasks/databases.yml")
+        user_tasks = load_yaml("ansible/roles/components/mysql_server/tasks/users.yml")
 
         database = database_tasks[0]["ansible.mysql.mysql_db"]
         user = user_tasks[0]["ansible.mysql.mysql_user"]
@@ -105,12 +105,12 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertEqual(len(defaults["mysql_zabbix_password_salt"]), 20)
         self.assertEqual(len(defaults["mysql_zabbix_monitor_password_salt"]), 20)
 
-        zabbix_defaults = load_yaml("ansible/roles/middleware/zabbix-server/defaults/main.yml")
+        zabbix_defaults = load_yaml("ansible/roles/components/zabbix_server/defaults/main.yml")
         self.assertEqual(zabbix_defaults["zabbix_server_mysql_schema_min_trigger_count"], 65)
         self.assertFalse(zabbix_defaults["zabbix_server_recreate_partial_schema"])
 
     def test_preflight_no_longer_requires_mysql_root_password(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/preflight.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/preflight.yml")
         secret_check = {
             task["name"]: task
             for task in tasks
@@ -122,7 +122,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_zabbix_schema_status_checks_triggers(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/mysql_schema.yml")
         schema_status = {
             task["name"]: task
             for task in tasks
@@ -133,7 +133,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertIn("trigger_count", schema_status["query"])
 
     def test_partial_zabbix_schema_requires_explicit_reset(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/mysql_schema.yml")
         by_name = {task["name"]: task for task in tasks}
 
         reset = by_name["Reset partial Zabbix database schema when explicitly requested"]
@@ -147,7 +147,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_schema_import_temporarily_trusts_function_creators(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/mysql_schema.yml")
         import_block = {
             task["name"]: task
             for task in tasks
@@ -179,7 +179,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertEqual(schema_import["target"], "{{ zabbix_server_mysql_schema_path }}")
 
     def test_schema_import_validates_trigger_count(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql_schema.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/mysql_schema.yml")
         by_name = {task["name"]: task for task in tasks}
 
         trigger_status = by_name["Check imported Zabbix schema trigger status"]
@@ -195,7 +195,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_zabbix_role_no_longer_owns_mysql_server_configuration(self) -> None:
-        tasks = load_yaml("ansible/roles/middleware/zabbix-server/tasks/mysql.yml")
+        tasks = load_yaml("ansible/roles/components/zabbix_server/tasks/mysql.yml")
         self.assertEqual(
             tasks,
             [
@@ -262,12 +262,17 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
             host_vars["network_service_aliases"],
         )
 
-    def test_docs_use_mysql_shared_alias(self) -> None:
+    def test_docs_do_not_duplicate_mysql_address_state(self) -> None:
         components = (REPO_ROOT / "docs/components.md").read_text(encoding="utf-8")
+        host_vars = load_yaml(
+            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
 
-        self.assertIn("10.10.10.221", components)
-        self.assertIn("mysql-shared.srv.alflag.internal", components)
-        self.assertNotIn("10.10.10.251", components)
+        self.assertIn("inventory vars", components)
+        self.assertNotIn(host_vars["network_ipv4_address"], components)
+        self.assertNotIn(host_vars["network_address"], components)
+        for alias in host_vars["network_service_aliases"]:
+            self.assertNotIn(alias, components)
         self.assertNotIn("mysql.alflag.internal", components)
 
 

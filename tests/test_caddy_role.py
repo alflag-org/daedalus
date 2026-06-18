@@ -14,7 +14,7 @@ class CaddyRoleTest(unittest.TestCase):
                 REPO_ROOT
                 / "ansible"
                 / "roles"
-                / "middleware"
+                / "components"
                 / "caddy"
                 / "tasks"
                 / "install.yml"

@@ -58,8 +58,14 @@ ansible/
     foundation/
     control/
     services/
-    common/        # transitional implementation details
-    middleware/    # transitional implementation details
+    components/    # private service implementation details
+    ssh_server/
+    cloudflared/
+    cloudflare_ssh_target/
+    systemd_resolved/
+    dns_recursor/
+    dns_authoritative/
+    zabbix_agent/
   collections/
 ```
 
@@ -73,7 +79,8 @@ docs/
 See [docs/layout.md](docs/layout.md) for the responsibility split. See
 [docs/bootstrap-control-node.md](docs/bootstrap-control-node.md) for the first
 KANAGAWA01 control node bootstrap boundary and
-[docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role.
+[docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role. See
+[docs/dns.md](docs/dns.md) for the DNS host-side management boundary.
 
 ## Installation
 

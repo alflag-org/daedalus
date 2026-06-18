@@ -19,3 +19,6 @@ infra = "daedalus.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["modules"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
