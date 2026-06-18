@@ -5,15 +5,10 @@ authoritative zone record contents yet.
 
 ## Hosts
 
-Recursive DNS:
-
-- `kng01-mgmt-recdns-01` at `10.10.10.240`
-- `kng01-mgmt-recdns-02` at `10.10.10.241`
-
-Authoritative DNS:
-
-- `kng01-mgmt-authdns-01` at `10.10.10.242`
-- `kng01-mgmt-authdns-02` at `10.10.10.243`
+Recursive and authoritative DNS host membership lives in inventory. Use
+`svc_dns_recursive` and `svc_dns_authoritative` group membership when current
+host state is needed. Address, listener, and resolver values belong in
+host/group vars, not in docs.
 
 ## Managed State
 
@@ -37,12 +32,12 @@ Authoritative zone record contents remain manual for now:
 - DNSSEC signing
 - external DNS and Cloudflare DNS
 
-The current zone metadata is:
+Zone metadata uses this shape:
 
 ```yaml
 dns_authoritative_zones:
-  - name: alflag.internal
-    file: /etc/nsd/zones/alflag.internal.zone
+  - name: <zone-name>
+    file: <absolute-zone-file-path>
 ```
 
 Daedalus will not overwrite that file unless a zone entry explicitly provides a
@@ -51,14 +46,13 @@ both authoritative DNS hosts, then run validation.
 
 ## Add Zone Metadata
 
-Add metadata under `ansible/inventories/kanagawa01/group_vars/svc_dns_authoritative.yml`:
+Add metadata under `ansible/inventories/kanagawa01/group_vars/svc_dns_authoritative.yml`.
+Use real values in inventory, not copied examples in docs:
 
 ```yaml
 dns_authoritative_zones:
-  - name: alflag.internal
-    file: /etc/nsd/zones/alflag.internal.zone
-  - name: example.alflag.internal
-    file: /etc/nsd/zones/example.alflag.internal.zone
+  - name: <zone-name>
+    file: <absolute-zone-file-path>
 ```
 
 Then place the corresponding zone file manually on each authoritative DNS host.
@@ -76,15 +70,14 @@ On a recursive DNS host:
 
 ```bash
 unbound-checkconf
-dig +short . NS @127.0.0.1
-dig +short alflag.internal SOA @127.0.0.1
+dig +short <query-name> <query-type> @<recursive-listener>
 ```
 
 On an authoritative DNS host:
 
 ```bash
 nsd-checkconf /etc/nsd/nsd.conf
-nsd-checkzone alflag.internal /etc/nsd/zones/alflag.internal.zone
+nsd-checkzone <zone-name> <absolute-zone-file-path>
 ```
 
 If an authoritative zone file is missing, Daedalus should fail with a clear

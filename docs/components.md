@@ -46,96 +46,31 @@ should run.
 
 ## Host Responsibility
 
-Current KANAGAWA01 component flags are:
+Inventory is the source of truth for current host membership, platform class,
+connection policy, network metadata, and enabled component flags. Do not copy
+those values into docs. Use the inventory graph and host/group vars when current
+state is needed:
 
-| Host | Connection policy | Components |
-| --- | --- | --- |
-| `kng01-mgmt-control-01` | local connection, `ops + become` | Atlas control host validation, SSH server, Zabbix agent |
-| `kng01-mgmt-recdns-01` | LXC root, no become | Recursive DNS, Zabbix agent |
-| `kng01-mgmt-recdns-02` | LXC root, no become | Recursive DNS, Zabbix agent |
-| `kng01-mgmt-authdns-01` | LXC root, no become | Authoritative DNS foundation, Zabbix agent |
-| `kng01-mgmt-authdns-02` | LXC root, no become | Authoritative DNS foundation, Zabbix agent |
-| `kng01-mgmt-connector-01` | LXC root, no become | cloudflared, Zabbix agent |
-| `kng01-mgmt-connector-02` | LXC root, no become | cloudflared, Zabbix agent |
-| `kng01-mgmt-bastion-01` | LXC root, no become | SSH server, Cloudflare SSH target, Zabbix agent |
-| `kng01-mgmt-workbench-01` | VM `ops + become` | SSH server, Cloudflare SSH target, systemd-resolved, Zabbix agent |
-| `kng01-mgmt-zabbix-01` | VM `ops + become` | Caddy-backed Zabbix server/frontend/local DB, Zabbix agent |
-| `kng01-mgmt-mysql-shared-01` | VM `ops + become` | Shared MySQL data service, Zabbix agent |
-| `kng01-dmz-web-01` | VM `ops + become` | SSH server, cloudflared host-side readiness, Cloudflare SSH target, localhost nginx Web origin, Zabbix agent |
+```bash
+infra inventory --site kanagawa01
+```
 
-The LXC connection policy reflects the current inventory state. VM hosts should
-use the normal `ops + become` model unless host-specific reality says
-otherwise.
+The docs describe role boundaries and operating contracts. Host additions,
+service moves, address changes, alias changes, and lifecycle decisions should be
+expressed in `ansible/inventories/kanagawa01/hosts.yml`, `group_vars/`, and
+`host_vars/`, with tests guarding the expected state.
 
-`kng01-mgmt-workbench-01` is a management-plane VM, not an LXC host. It remains
-in `kng01_mgmt`, `provider_proxmox`, and `svc_workbench`, and uses the standard
-VM connection model.
+Platform intent should stay explicit:
 
-`kng01-mgmt-bastion-01` remains operational. It is a future decommission
-candidate, but it stays in inventory and in `svc_bastion` until that removal is
-planned separately.
+- VM hosts use the normal `ops + become` model unless inventory says otherwise.
+- LXC hosts may still use a root bootstrap connection while they converge toward
+  the same steady-state operator model.
+- `svc_*` groups express service intent; `components/*` roles are implementation
+  details and are not selected directly from inventory.
 
-`kng01-dmz-web-01` is the first DMZ Web origin host. It is registered in VLAN
-130 at `10.10.30.21/24` with gateway `10.10.30.1`. Its nginx origin binds to
-`127.0.0.1:8080` by default, so WAN-direct inbound `80`/`443` is not part of
-this host contract. A later Cloudflare Tunnel or Access change should route to
-that local service URL or deliberately override the bind address.
-The host is opted into the existing `cloudflared` role, but apply runs still
-require `cloudflared_tunnel_token` from the operator secret store, an untracked
-vars file, or an operator-provided extra var.
-
-`kng01-mgmt-zabbix-01` is reserved for the primary Zabbix service in VLAN 110
-because monitoring and problem triage are management-plane responsibilities.
-The inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
-`platform_vm`, and `svc_zabbix`. Daedalus manages the VM foundation, SSH policy,
-systemd-resolved policy, `zabbix-agent2`, local MySQL, PHP-FPM, Caddy, and the
-Zabbix server/frontend packages for the host. Zabbix consumes
-`components/mysql_server` as a workload-defined local database: `svc_zabbix`
-declares the Zabbix database, application user, and monitor user, while the
-Zabbix role owns only the Zabbix schema import and application configuration.
-The managed frontend listens on HTTP port 80 through Caddy and serves
-`zabbix.alflag.internal` via the host's normal management-plane address. Apply
-runs require the database secret vars `mysql_zabbix_password` and
-`mysql_zabbix_monitor_password` from the operator secret store, the site-local
-operator vars file loaded by `infra`, or operator-provided extra vars. The local
-MySQL root account is managed over the Unix socket and does not need an
-operator-provided database password. The VM is expected to exist before
-Daedalus runs; Daedalus manages the guest configuration after it is reachable at
-`10.10.10.250`.
-
-`kng01-mgmt-mysql-shared-01` is the shared MySQL data service host in VLAN 110. The
-inventory classifies it as an Ubuntu 26.04 Proxmox VM in `kng01_mgmt`,
-`platform_vm`, and `svc_mysql`. Daedalus installs MySQL through
-`components/mysql_server`, binds it to `10.10.10.221`, and keeps database/user
-provisioning driven by `mysql_server_databases` and `mysql_server_users`. Those
-lists are intentionally empty at introduction time; add workload-specific
-databases, users, and required secret vars to `svc_mysql` or narrower inventory
-vars when a consumer is ready. The VM is expected to exist before Daedalus runs;
-Daedalus manages the guest configuration after it is reachable at
-`10.10.10.221`.
-
-Prometheus, Grafana, Alertmanager, Zabbix HA, and historical Zabbix database
-migration are intentionally out of scope for this host definition.
-
-## Network Allocation
-
-| Host | Zone | VLAN | Address | Gateway |
-| --- | --- | ---: | --- | --- |
-| `kng01-mgmt-connector-01` | mgmt | 110 | `10.10.10.41/24` | `10.10.10.1` |
-| `kng01-mgmt-connector-02` | mgmt | 110 | `10.10.10.42/24` | `10.10.10.1` |
-| `kng01-mgmt-bastion-01` | mgmt | 110 | `10.10.10.60/24` | `10.10.10.1` |
-| `kng01-mgmt-workbench-01` | mgmt | 110 | `10.10.10.61/24` | `10.10.10.1` |
-| `kng01-mgmt-control-01` | mgmt | 110 | `10.10.10.62/24` | `10.10.10.1` |
-| `kng01-mgmt-recdns-01` | mgmt | 110 | `10.10.10.240/24` | `10.10.10.1` |
-| `kng01-mgmt-recdns-02` | mgmt | 110 | `10.10.10.241/24` | `10.10.10.1` |
-| `kng01-mgmt-authdns-01` | mgmt | 110 | `10.10.10.242/24` | `10.10.10.1` |
-| `kng01-mgmt-authdns-02` | mgmt | 110 | `10.10.10.243/24` | `10.10.10.1` |
-| `kng01-mgmt-zabbix-01` | mgmt | 110 | `10.10.10.250/24` | `10.10.10.1` |
-| `kng01-mgmt-mysql-shared-01` | mgmt | 110 | `10.10.10.221/24` | `10.10.10.1` |
-| `kng01-dmz-web-01` | dmz | 130 | `10.10.30.21/24` | `10.10.30.1` |
-
-KANAGAWA01 recursive DNS resolvers are `10.10.10.240` and `10.10.10.241`.
-`kng01-mgmt-zabbix-01` uses those resolver addresses in inventory metadata.
+Service-specific host metadata, DNS aliases, bind addresses, and validation
+targets belong in inventory vars. Documentation should link to that source of
+truth rather than restating it.
 
 ## DNS Boundary
 
@@ -151,16 +86,14 @@ and validation commands.
 
 ## Required Internal DNS Records
 
-Daedalus does not currently keep `alflag.internal` zone records as managed
-inventory data. Until that source of truth moves into Daedalus, create or verify
-these records in the authoritative internal DNS system:
+Daedalus does not currently keep authoritative zone record contents as managed
+state. DNS names, aliases, and address metadata that are needed by services
+belong in inventory vars until DNS zone contents move under an explicit managed
+source of truth.
 
-| Name | Type | Value |
-| --- | --- | --- |
-| `kng01-mgmt-zabbix-01.srv.alflag.internal` | A | `10.10.10.250` |
-| `zabbix.alflag.internal` | CNAME | `kng01-mgmt-zabbix-01.srv.alflag.internal` |
-| `kng01-mgmt-mysql-shared-01.srv.alflag.internal` | A | `10.10.10.221` |
-| `mysql-shared.srv.alflag.internal` | CNAME | `kng01-mgmt-mysql-shared-01.srv.alflag.internal` |
+Do not duplicate DNS record values in docs. Use inventory metadata and the
+manually maintained authoritative zone files when records need to be created or
+verified.
 
 ## External State
 
@@ -201,13 +134,6 @@ atlas run infra check --site kanagawa01 --limit kng01-mgmt-mysql-shared-01
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
-```
-
-After applying the site playbook to `kng01-dmz-web-01`, the origin health check
-is available on the host at:
-
-```bash
-curl http://127.0.0.1:8080/healthz
 ```
 
 Local development machines may lack Atlas runtime, operator secret material, or

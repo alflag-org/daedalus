@@ -43,8 +43,8 @@ Metrics are disabled by default. Enable them with:
 
 ```yaml
 cloudflared_metrics_enabled: true
-cloudflared_metrics_address: 127.0.0.1
-cloudflared_metrics_port: 60123
+cloudflared_metrics_address: <metrics-listen-address>
+cloudflared_metrics_port: <metrics-listen-port>
 ```
 
 ## Cloudflare SSH Targets

@@ -262,12 +262,17 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
             host_vars["network_service_aliases"],
         )
 
-    def test_docs_use_mysql_shared_alias(self) -> None:
+    def test_docs_do_not_duplicate_mysql_address_state(self) -> None:
         components = (REPO_ROOT / "docs/components.md").read_text(encoding="utf-8")
+        host_vars = load_yaml(
+            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
 
-        self.assertIn("10.10.10.221", components)
-        self.assertIn("mysql-shared.srv.alflag.internal", components)
-        self.assertNotIn("10.10.10.251", components)
+        self.assertIn("inventory vars", components)
+        self.assertNotIn(host_vars["network_ipv4_address"], components)
+        self.assertNotIn(host_vars["network_address"], components)
+        for alias in host_vars["network_service_aliases"]:
+            self.assertNotIn(alias, components)
         self.assertNotIn("mysql.alflag.internal", components)
 
 

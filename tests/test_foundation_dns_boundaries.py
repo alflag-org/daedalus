@@ -1,3 +1,4 @@
+import re
 import unittest
 from pathlib import Path
 
@@ -148,10 +149,18 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         layout = read_text("docs/layout.md")
         dns = read_text("docs/dns.md")
 
-        self.assertIn("Zone record contents remain manually maintained", components)
+        self.assertIn("Do not duplicate DNS record values in docs", components)
         self.assertIn("private service implementation roles", layout)
         self.assertIn("Authoritative zone record contents remain manual", dns)
-        self.assertIn("kng01-mgmt-bastion-01` remains operational", components)
+
+    def test_docs_do_not_duplicate_network_state(self) -> None:
+        docs_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (REPO_ROOT / "docs").glob("*.md")
+        )
+
+        self.assertIsNone(re.search(r"\b\d{1,3}(?:\.\d{1,3}){3}(?:/\d{1,2})?\b", docs_text))
+        self.assertIsNone(re.search(r"\bVLAN\s+\d+\b", docs_text))
 
 
 if __name__ == "__main__":
