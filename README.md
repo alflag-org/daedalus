@@ -13,9 +13,9 @@ Ansible backend and the small `infra` command wrapper that invokes it.
 
 ## Responsibility Boundary
 
-Daedalus is limited to the KANAGAWA01 real-host convergence layer. Atlas owns
+Daedalus is limited to the topmost01 real-host convergence layer. Atlas owns
 runtime installation, command execution, release distribution, and run logs;
-Daedalus owns Ansible host state for the current home infrastructure.
+Daedalus owns Ansible host state for the current managed infrastructure.
 
 Daedalus is not a general-purpose Ansible role collection. Application-specific
 operations, old experiments, and historical Minecraft, Pterodactyl, or Dify
@@ -78,7 +78,7 @@ docs/
 
 See [docs/layout.md](docs/layout.md) for the responsibility split. See
 [docs/bootstrap-control-node.md](docs/bootstrap-control-node.md) for the first
-KANAGAWA01 control node bootstrap boundary and
+topmost01 control node bootstrap boundary and
 [docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role. See
 [docs/dns.md](docs/dns.md) for the DNS host-side management boundary.
 
@@ -120,7 +120,7 @@ Production execution should go through `atlas run` or the shim so Atlas can
 provide the release runtime, host context, and JSONL run log. Direct local Python
 entrypoints are for development only.
 
-The first KANAGAWA01 control node, `kng01-mgmt-control-01`, is manually
+The first topmost01 control node, `topmost01-mgmt-control-01`, is manually
 bootstrapped. Daedalus validates that host and can manage non-dangerous
 configuration, but it does not rebuild the active Atlas runtime there by
 default.
@@ -139,7 +139,7 @@ Discovery:
 ```bash
 infra sites
 infra playbooks
-infra inventory --site kanagawa01
+infra inventory --site topmost01
 ```
 
 `infra playbooks` only lists the public lifecycle entrypoints:
@@ -156,30 +156,30 @@ Reachability:
 
 ```bash
 infra ping
-infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
+infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
 ```
 
 Dry-run validation:
 
 ```bash
 infra check
-infra check --site kanagawa01 --limit cap_control_node
-infra check --site kanagawa01 --limit svc_dns_recursive
+infra check --site topmost01 --limit cap_control_node
+infra check --site topmost01 --limit svc_dns_recursive
 ```
 
 Diff preview:
 
 ```bash
 infra diff
-infra diff --site kanagawa01 --limit cap_control_node
-infra diff --site kanagawa01 --limit svc_dns_recursive
+infra diff --site topmost01 --limit cap_control_node
+infra diff --site topmost01 --limit svc_dns_recursive
 ```
 
 Apply is the mutating action and requires explicit confirmation:
 
 ```bash
 infra apply --yes
-infra apply --yes --site kanagawa01 --limit svc_dns_recursive
+infra apply --yes --site topmost01 --limit svc_dns_recursive
 ```
 
 `check`, `diff`, and `apply` support these limited Ansible pass-through options:
@@ -219,7 +219,7 @@ Daedalus uses `ansible/ansible.cfg` and executes Ansible with `ansible/` as the
 working directory. Notable defaults include:
 
 ```text
-inventory = inventories/kanagawa01/hosts.yml
+inventory = inventories/topmost01/hosts.yml
 roles_path = roles
 collections_path = collections
 private_key_file = ~/.ssh/infra
@@ -255,7 +255,7 @@ exists:
 ~/.config/daedalus/<site>.json
 ```
 
-For KANAGAWA01, the default path is `~/.config/daedalus/kanagawa01.yml`.
+For topmost01, the default path is `~/.config/daedalus/topmost01.yml`.
 Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` to use a different file.
 Explicit `--extra-vars` values are still supported and are passed after the
 auto-loaded file.
@@ -300,7 +300,7 @@ If you need to bypass the wrapper while debugging Ansible itself, execute from
 cd ansible
 ansible-galaxy collection install -r collections/requirements.yml -p collections
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
-  -i inventories/kanagawa01/hosts.yml \
+  -i inventories/topmost01/hosts.yml \
   playbooks/site.yml \
   --check --diff
 ```
@@ -311,20 +311,20 @@ playbook, and limit.
 Bootstrap a cloud-init VM with:
 
 ```bash
-infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host>
+infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host>
 ```
 
 Then run the steady-state converge for that host:
 
 ```bash
-infra apply --yes --site kanagawa01 --limit <new-host>
+infra apply --yes --site topmost01 --limit <new-host>
 ```
 
 Bootstrap a root-only LXC with the same playbook, but override the first login
 user for that one run:
 
 ```bash
-infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
+infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host> \
   --extra-vars 'ansible_user=root ansible_become=false'
 ```
 
@@ -351,7 +351,7 @@ python -m pip install -e .
 infra sites
 infra playbooks
 infra inventory
-infra check --site kanagawa01 --limit svc_dns_recursive
+infra check --site topmost01 --limit svc_dns_recursive
 ```
 
 For documentation-only changes, inspect the rendered Markdown and confirm that

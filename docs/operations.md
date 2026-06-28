@@ -4,8 +4,8 @@ Use Atlas or the generated `infra` shim for production runs:
 
 ```bash
 atlas run infra check
-atlas run infra diff --site kanagawa01 --limit cap_control_node
-atlas run infra apply --yes --site kanagawa01 --limit svc_dns_recursive
+atlas run infra diff --site topmost01 --limit cap_control_node
+atlas run infra apply --yes --site topmost01 --limit svc_dns_recursive
 ```
 
 Use `infra sites` and `infra playbooks` before targeting a non-default site or
@@ -53,12 +53,12 @@ mysql_zabbix_monitor_password: ...
 The local MySQL root account is managed over the Unix socket and does not need
 an operator-provided database password.
 
-Store them in the KANAGAWA01 operator vars file:
+Store them in the topmost01 operator vars file:
 
 ```bash
 mkdir -p /home/ops/.config/daedalus
 umask 077
-cat > /home/ops/.config/daedalus/kanagawa01.yml <<'EOF'
+cat > /home/ops/.config/daedalus/topmost01.yml <<'EOF'
 mysql_zabbix_password: ...
 mysql_zabbix_monitor_password: ...
 EOF
@@ -67,10 +67,10 @@ EOF
 Then normal targeted runs do not need a repeated `--extra-vars` argument:
 
 ```bash
-atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
+atlas run infra apply --yes --site topmost01 --limit topmost01-mgmt-zabbix-01
 ```
 
-The shared MySQL data service at `kng01-mgmt-mysql-shared-01` currently has no
+The shared MySQL data service at `topmost01-mgmt-mysql-shared-01` currently has no
 workload databases or users declared, so it does not require an operator secret
 by default. When adding a consumer, declare its database/user entries through
 `mysql_server_databases` and `mysql_server_users`, and list any required secret

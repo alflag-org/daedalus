@@ -10,7 +10,7 @@ ansible.cfg        -> ansible/ansible.cfg
 inventories/      -> ansible/inventories/
 playbooks/        -> ansible/playbooks/
 roles/            -> ansible/roles/
-group_vars/       -> ansible/inventories/kanagawa01/group_vars/ or removed when legacy-only
+group_vars/       -> ansible/inventories/topmost01/group_vars/ or removed when legacy-only
 ```
 
 Current playbook structure:
@@ -46,7 +46,7 @@ surface and includes those component roles internally.
 
 The legacy top-level `group_vars/` tree belonged to the removed root inventory
 and was removed with it. Active site variables now live under
-`ansible/inventories/kanagawa01/group_vars/`.
+`ansible/inventories/topmost01/group_vars/`.
 
 Host responsibility is now modeled primarily through inventory groups:
 
