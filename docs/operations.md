@@ -55,6 +55,11 @@ Prometheus reads file-based service discovery targets prepared under
 `/var/lib/prometheus/file_sd`. Daedalus creates the directory and configures
 Prometheus to read it. Hermes owns the generated target files.
 
+The foundation converge includes a temporary cleanup role for hosts that
+previously received Zabbix packages from Daedalus. It purges those packages and
+removes their old local state before `node_exporter` becomes the active host
+metrics agent.
+
 The shared MySQL service is not part of the monitoring migration. It remains a
 generic data service with no workload databases or users declared by default.
 Do not remove it as part of Zabbix cleanup unless that is made as a separate

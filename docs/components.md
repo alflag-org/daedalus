@@ -38,6 +38,7 @@ operators should target that playbook deliberately.
 | `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from zone metadata. Zone record contents remain manually maintained unless explicit text is provided. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `services/mysql` | `mysql_server_enabled` | Converges the generic shared MySQL data service using private `components/mysql_server` internals. It is independent from monitoring. |
+| `retired_monitoring_cleanup` | `retired_monitoring_cleanup_enabled` | Temporary migration role that removes old Zabbix services, packages, repositories, and local state from hosts. |
 | `node_exporter` | `node_exporter_enabled` | Installs `prometheus-node-exporter` on monitored hosts and renders its system defaults. |
 | `services/monitoring` | `monitoring_stack_enabled` | Converges the monitoring service host using private Prometheus, Alertmanager, Grafana, and blackbox exporter component roles. |
 

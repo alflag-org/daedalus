@@ -131,10 +131,24 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
     def test_foundation_applies_node_exporter_once(self) -> None:
         foundation = load_yaml("ansible/playbooks/components/foundation.yml")
         role_entries = foundation[0]["roles"]
+        cleanup_entries = [
+            entry
+            for entry in role_entries
+            if entry.get("role") == "retired_monitoring_cleanup"
+        ]
         node_exporter_entries = [
             entry for entry in role_entries if entry.get("role") == "node_exporter"
         ]
 
+        self.assertEqual(
+            cleanup_entries,
+            [
+                {
+                    "role": "retired_monitoring_cleanup",
+                    "when": "retired_monitoring_cleanup_enabled | default(false)",
+                }
+            ],
+        )
         self.assertEqual(
             node_exporter_entries,
             [{"role": "node_exporter", "when": "node_exporter_enabled | default(false)"}],
@@ -152,6 +166,25 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             LEGACY_SERVER_COMPONENT,
         ):
             self.assertNotIn(removed_ref, active_text)
+
+    def test_retired_monitoring_cleanup_removes_zabbix_artifacts(self) -> None:
+        site_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/kanagawa01.yml")
+        defaults = load_yaml("ansible/roles/retired_monitoring_cleanup/defaults/main.yml")
+        tasks = load_yaml("ansible/roles/retired_monitoring_cleanup/tasks/main.yml")
+        by_name = {task["name"]: task for task in tasks}
+
+        self.assertTrue(site_vars["retired_monitoring_cleanup_enabled"])
+        self.assertIn("zabbix-agent2", defaults["retired_monitoring_cleanup_packages"])
+        self.assertIn("zabbix-release", defaults["retired_monitoring_cleanup_packages"])
+        self.assertIn("/etc/zabbix", defaults["retired_monitoring_cleanup_paths"])
+
+        purge = by_name["Purge retired monitoring packages"]["ansible.builtin.apt"]
+        self.assertEqual(purge["state"], "absent")
+        self.assertTrue(purge["purge"])
+        self.assertTrue(purge["autoremove"])
+
+        cleanup = by_name["Remove retired monitoring paths"]["ansible.builtin.file"]
+        self.assertEqual(cleanup["state"], "absent")
 
     def test_services_use_private_components(self) -> None:
         mysql_tasks = read_text("ansible/roles/services/mysql/tasks/main.yml")
