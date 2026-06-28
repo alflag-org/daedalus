@@ -24,14 +24,14 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_playbook_uses_site_operator_vars_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             vars_path.parent.mkdir(parents=True)
             vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
-                    AnsibleRunner("kanagawa01"),
-                    limit="kng01-mgmt-monitor-01",
+                    AnsibleRunner("topmost01"),
+                    limit="topmost01-mgmt-monitor-01",
                     check=True,
                 )
 
@@ -41,13 +41,13 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_explicit_extra_vars_follow_operator_vars(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             vars_path.parent.mkdir(parents=True)
             vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
-                    AnsibleRunner("kanagawa01"),
+                    AnsibleRunner("topmost01"),
                     extra_vars="node_exporter_enabled=false",
                 )
 
@@ -60,19 +60,23 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_environment_override_takes_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            default_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
+            default_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             default_path.parent.mkdir(parents=True)
-            default_path.write_text("monitoring_stack_enabled: false\n", encoding="utf-8")
+            default_path.write_text(
+                "monitoring_stack_enabled: false\n", encoding="utf-8"
+            )
 
             override_path = Path(home) / "operator.yml"
-            override_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
+            override_path.write_text(
+                "monitoring_stack_enabled: true\n", encoding="utf-8"
+            )
 
             with patch.dict(
                 os.environ,
                 {"HOME": home, "DAEDALUS_OPERATOR_VARS": str(override_path)},
                 clear=True,
             ):
-                cmd = self.capture_playbook_cmd(AnsibleRunner("kanagawa01"))
+                cmd = self.capture_playbook_cmd(AnsibleRunner("topmost01"))
 
         self.assertIn(f"@{override_path}", cmd)
         self.assertNotIn(f"@{default_path}", cmd)
@@ -89,12 +93,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
                 RuntimeError,
                 f"Operator vars file not found: {missing_path}",
             ):
-                AnsibleRunner("kanagawa01").playbook("site")
+                AnsibleRunner("topmost01").playbook("site")
 
 
 class AnsibleRunnerCollectionsTest(unittest.TestCase):
     def build_runner(self, ansible_root: Path) -> AnsibleRunner:
-        runner = AnsibleRunner("kanagawa01")
+        runner = AnsibleRunner("topmost01")
         runner.ansible_root = ansible_root
         return runner
 
@@ -108,11 +112,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
 
     def install_collection(self, ansible_root: Path, version: str = "3.10.0") -> None:
         collection_path = (
-            ansible_root
-            / "collections"
-            / "ansible_collections"
-            / "ansible"
-            / "mysql"
+            ansible_root / "collections" / "ansible_collections" / "ansible" / "mysql"
         )
         collection_path.mkdir(parents=True)
         (collection_path / "MANIFEST.json").write_text(
@@ -121,7 +121,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
         )
 
     def test_playbook_enables_collection_check(self) -> None:
-        runner = AnsibleRunner("kanagawa01")
+        runner = AnsibleRunner("topmost01")
 
         with (
             patch.dict(os.environ, {}, clear=True),
@@ -133,7 +133,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
         self.assertTrue(run.call_args.kwargs["ensure_collections"])
 
     def test_inventory_graph_skips_collection_check(self) -> None:
-        runner = AnsibleRunner("kanagawa01")
+        runner = AnsibleRunner("topmost01")
 
         with patch.object(runner, "_run") as run:
             runner.inventory_graph()
@@ -243,7 +243,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
 
 class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
     def build_runner(self, ansible_root: Path) -> AnsibleRunner:
-        runner = AnsibleRunner("kanagawa01")
+        runner = AnsibleRunner("topmost01")
         runner.ansible_root = ansible_root
         return runner
 
@@ -287,12 +287,8 @@ class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
         self.assertEqual(requirements, [])
 
     def test_version_requirement_supports_compound_bounds(self) -> None:
-        self.assertTrue(
-            AnsibleRunner._version_satisfies("5.0.1", ">=3.10.0,<6.0.0")
-        )
-        self.assertFalse(
-            AnsibleRunner._version_satisfies("6.0.0", ">=3.10.0,<6.0.0")
-        )
+        self.assertTrue(AnsibleRunner._version_satisfies("5.0.1", ">=3.10.0,<6.0.0"))
+        self.assertFalse(AnsibleRunner._version_satisfies("6.0.0", ">=3.10.0,<6.0.0"))
 
     def test_version_requirement_rejects_unknown_operators(self) -> None:
         self.assertFalse(AnsibleRunner._version_satisfies("5.0.1", "~=5.0"))

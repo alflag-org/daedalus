@@ -10,7 +10,7 @@ context.
 
 ## First Control Node vs Future Control Nodes
 
-`kng01-mgmt-control-01` is manually bootstrapped and already has the minimum
+`topmost01-mgmt-control-01` is manually bootstrapped and already has the minimum
 runtime needed to run `atlas run infra ...`.
 
 For that host:
@@ -48,7 +48,7 @@ control nodes are selected through `cap_control_node`. The public `site`
 playbook imports the control-plane component internally; operators do not need a
 separate Atlas-specific playbook for steady-state runs.
 
-`kng01-mgmt-control-01` should declare its control-node behavior explicitly in
+`topmost01-mgmt-control-01` should declare its control-node behavior explicitly in
 host vars instead of relying on a hostname-specific fallback.
 
 Future control nodes or replacement control nodes can set management variables
@@ -73,14 +73,14 @@ hosts: later runs can switch to `ansible_user: ops` with `become: true`.
 For a brand-new VM that already has `ops`, use the shared bootstrap playbook:
 
 ```bash
-infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host>
+infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host>
 ```
 
 For a brand-new root-only LXC, use the same bootstrap playbook and override the
 first login user for that run:
 
 ```bash
-infra apply --yes --site kanagawa01 --playbook bootstrap --limit <new-host> \
+infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host> \
   --extra-vars 'ansible_user=root ansible_become=false'
 ```
 
@@ -172,14 +172,14 @@ atlas_registries:
 Use the wrapper through Atlas on the control node:
 
 ```bash
-atlas run infra inventory --site kanagawa01
-atlas run infra check --site kanagawa01 --limit cap_control_node
-atlas run infra diff --site kanagawa01 --limit cap_control_node
+atlas run infra inventory --site topmost01
+atlas run infra check --site topmost01 --limit cap_control_node
+atlas run infra diff --site topmost01 --limit cap_control_node
 ```
 
 For DNS LXC reachability and the service-scoped converge path:
 
 ```bash
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --limit svc_dns_recursive
+atlas run infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
+atlas run infra check --site topmost01 --limit svc_dns_recursive
 ```

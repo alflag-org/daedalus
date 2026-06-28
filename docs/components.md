@@ -1,6 +1,6 @@
-# KANAGAWA01 Components
+# topmost01 Components
 
-Daedalus models KANAGAWA01 host configuration as inventory-selected
+Daedalus models topmost01 host configuration as inventory-selected
 components. Inventory describes which hosts exist, their network zone, platform
 class, and enabled component flags. Roles implement host-side state only.
 
@@ -9,7 +9,7 @@ class, and enabled component flags. Roles implement host-side state only.
 The steady-state entrypoint is:
 
 ```bash
-atlas run infra check --site kanagawa01
+atlas run infra check --site topmost01
 ```
 
 Focused runs use the normal `site` playbook plus `--limit`. `cloudflare` is the
@@ -17,9 +17,9 @@ only explicit host-side component playbook outside normal `site` because apply
 runs require operator-provided tunnel tokens:
 
 ```bash
-atlas run infra check --site kanagawa01 --limit svc_dns_recursive
-atlas run infra check --site kanagawa01 --limit cap_control_node
-atlas run infra check --site kanagawa01 --playbook cloudflare
+atlas run infra check --site topmost01 --limit svc_dns_recursive
+atlas run infra check --site topmost01 --limit cap_control_node
+atlas run infra check --site topmost01 --playbook cloudflare
 ```
 
 `cloudflare` is intentionally explicit and is not imported into `site.yml`.
@@ -53,12 +53,12 @@ those values into docs. Use the inventory graph and host/group vars when current
 state is needed:
 
 ```bash
-infra inventory --site kanagawa01
+infra inventory --site topmost01
 ```
 
 The docs describe role boundaries and operating contracts. Host additions,
 service moves, address changes, alias changes, and lifecycle decisions should be
-expressed in `ansible/inventories/kanagawa01/hosts.yml`, `group_vars/`, and
+expressed in `ansible/inventories/topmost01/hosts.yml`, `group_vars/`, and
 `host_vars/`, with tests guarding the expected state.
 
 Platform intent should stay explicit:
@@ -120,20 +120,20 @@ Daedalus component after the host-side state is stable.
 On the control node, use:
 
 ```bash
-atlas run infra inventory --site kanagawa01
-atlas run infra check --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-connector-01
-atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
-atlas run infra check --site kanagawa01 --limit kng01-mgmt-control-01
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-monitor-01
-atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-monitor-01
-atlas run infra check --site kanagawa01 --limit svc_monitoring
-atlas run infra check --site kanagawa01 --limit svc_mysql
-atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
-atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
-atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
+atlas run infra inventory --site topmost01
+atlas run infra check --site topmost01 --limit topmost01-mgmt-dns-recursive-01
+atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-connector-01
+atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-bastion-01
+atlas run infra check --site topmost01 --limit topmost01-mgmt-control-01
+atlas run infra ping --site topmost01 --limit topmost01-mgmt-monitor-01
+atlas run infra check --site topmost01 --playbook bootstrap --limit topmost01-mgmt-monitor-01
+atlas run infra check --site topmost01 --limit svc_monitoring
+atlas run infra check --site topmost01 --limit svc_mysql
+atlas run infra ping --site topmost01 --limit topmost01-dmz-web-01
+atlas run infra check --site topmost01 --limit topmost01-dmz-web-01
+atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-dmz-web-01
 ```
 
 Local development machines may lack Atlas runtime, operator secret material, or
 `~/.ssh/infra`. In that case, use repository-local syntax checks as a static
-guard and run the commands above from `kng01-mgmt-control-01`.
+guard and run the commands above from `topmost01-mgmt-control-01`.

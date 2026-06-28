@@ -1,6 +1,6 @@
 # Monitoring
 
-KANAGAWA01 monitoring has moved from Zabbix to Prometheus. Zabbix server,
+topmost01 monitoring has moved from Zabbix to Prometheus. Zabbix server,
 frontend, database wiring, and Zabbix Agent are no longer installed by
 Daedalus.
 
@@ -9,7 +9,7 @@ role from the foundation converge. It stops old Zabbix services, purges Zabbix
 packages, and removes leftover Zabbix configuration, repository, log, and data
 paths from existing hosts.
 
-The monitoring service host is `kng01-mgmt-monitor-01`. Daedalus installs
+The monitoring service host is `topmost01-mgmt-monitor-01`. Daedalus installs
 Prometheus, Grafana, Alertmanager, and blackbox exporter there through the
 `svc_monitoring` inventory group.
 

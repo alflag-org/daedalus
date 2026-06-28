@@ -10,7 +10,7 @@ ansible.cfg        -> ansible/ansible.cfg
 inventories/      -> ansible/inventories/
 playbooks/        -> ansible/playbooks/
 roles/            -> ansible/roles/
-group_vars/       -> ansible/inventories/kanagawa01/group_vars/ or removed when legacy-only
+group_vars/       -> ansible/inventories/topmost01/group_vars/ or removed when legacy-only
 ```
 
 Current playbook structure:
@@ -43,13 +43,13 @@ The former `roles/middleware/*` service internals moved under
 `roles/components/*`. `roles/services/*` remains the public service intent
 surface and includes those component roles internally.
 
-KANAGAWA01 monitoring moved from the retired Zabbix service path to the
+topmost01 monitoring moved from the retired Zabbix service path to the
 Prometheus stack documented in [monitoring.md](monitoring.md). Daedalus no
 longer installs Zabbix Agent or converges Zabbix server/frontend roles.
 
 The legacy top-level `group_vars/` tree belonged to the removed root inventory
 and was removed with it. Active site variables now live under
-`ansible/inventories/kanagawa01/group_vars/`.
+`ansible/inventories/topmost01/group_vars/`.
 
 Host responsibility is now modeled primarily through inventory groups:
 

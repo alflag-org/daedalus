@@ -1,6 +1,6 @@
 ---
-site_name: kanagawa01
-site_short_name: kng01
+site_name: topmost01
+site_short_name: topmost01
 
 ansible_user: ops
 ansible_become: true

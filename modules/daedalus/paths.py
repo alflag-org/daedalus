@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-DEFAULT_SITE = "kanagawa01"
+DEFAULT_SITE = "topmost01"
 DEFAULT_PLAYBOOK = "site"
 PUBLIC_PLAYBOOKS = ("site", "bootstrap", "cloudflare")
 

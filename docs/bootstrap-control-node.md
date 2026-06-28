@@ -1,6 +1,6 @@
 # First Control Node Bootstrap
 
-`kng01-mgmt-control-01` is the first KANAGAWA01 control node. It is the root of
+`topmost01-mgmt-control-01` is the first topmost01 control node. It is the root of
 configuration management for the site and is intentionally bootstrapped by hand.
 
 Daedalus is Atlas-operated and Ansible-backed. It needs Atlas, an Atlas scripts
@@ -11,12 +11,12 @@ itself before it can run.
 
 ## Role
 
-`kng01-mgmt-control-01` runs operator-triggered commands such as:
+`topmost01-mgmt-control-01` runs operator-triggered commands such as:
 
 ```bash
-atlas run infra inventory --site kanagawa01
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --limit cap_control_node
+atlas run infra inventory --site topmost01
+atlas run infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
+atlas run infra check --site topmost01 --limit cap_control_node
 ```
 
 Daedalus may validate this host and manage non-dangerous configuration on it,
@@ -75,11 +75,11 @@ atlas status
 atlas runtime status
 atlas scripts list --verbose
 ansible-inventory --version
-atlas run infra inventory --site kanagawa01
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-recdns-01
-atlas run infra check --site kanagawa01 --limit svc_dns_recursive
-atlas run infra check --site kanagawa01 --limit cap_control_node
-atlas run infra diff --site kanagawa01 --limit cap_control_node
+atlas run infra inventory --site topmost01
+atlas run infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
+atlas run infra check --site topmost01 --limit svc_dns_recursive
+atlas run infra check --site topmost01 --limit cap_control_node
+atlas run infra diff --site topmost01 --limit cap_control_node
 ```
 
 The first control node should be assigned to these inventory groups:

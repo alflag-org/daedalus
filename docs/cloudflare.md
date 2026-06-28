@@ -1,6 +1,6 @@
 # Cloudflare Host-Side Components
 
-Daedalus manages only the host-side pieces needed for KANAGAWA01 Cloudflare
+Daedalus manages only the host-side pieces needed for topmost01 Cloudflare
 connectivity:
 
 - `cloudflared` installation
@@ -80,8 +80,8 @@ work.
 Focused checks from the control node:
 
 ```bash
-atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-connector-01
-atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
+atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-connector-01
+atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-bastion-01
 ```
 
 After apply, validate local host-side state:

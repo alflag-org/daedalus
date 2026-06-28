@@ -4,8 +4,8 @@ Use Atlas or the generated `infra` shim for production runs:
 
 ```bash
 atlas run infra check
-atlas run infra diff --site kanagawa01 --limit cap_control_node
-atlas run infra apply --yes --site kanagawa01 --limit svc_dns_recursive
+atlas run infra diff --site topmost01 --limit cap_control_node
+atlas run infra apply --yes --site topmost01 --limit svc_dns_recursive
 ```
 
 Use `infra sites` and `infra playbooks` before targeting a non-default site or
@@ -47,8 +47,8 @@ Prometheus, Grafana, Alertmanager, and blackbox exporter converge. Target it as
 a normal service group:
 
 ```bash
-atlas run infra check --site kanagawa01 --limit svc_monitoring
-atlas run infra apply --yes --site kanagawa01 --limit svc_monitoring
+atlas run infra check --site topmost01 --limit svc_monitoring
+atlas run infra apply --yes --site topmost01 --limit svc_monitoring
 ```
 
 Prometheus reads file-based service discovery targets prepared under
