@@ -35,7 +35,7 @@ operators should target that playbook deliberately.
 | `cloudflare_ssh_target` | `cloudflare_ssh_enabled` | Ensures local SSH is available for Cloudflare Access SSH or Tunnel routing. It performs no Cloudflare API calls. |
 | `systemd_resolved` | `systemd_resolved_enabled` | Configures systemd-resolved. `/etc/resolv.conf` is managed only when `systemd_resolved_manage_resolv_conf` is true. |
 | `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts, including internal stub-zone or forward-zone metadata. |
-| `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from zone metadata. Zone record contents remain manually maintained unless explicit text is provided. |
+| `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from managed zone metadata and structured zone contents. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
 | `services/mysql` | `mysql_server_enabled` | Converges the generic shared MySQL data service using private `components/mysql_server` internals. It is independent from monitoring. |
 | `retired_monitoring_cleanup` | `retired_monitoring_cleanup_enabled` | Temporary migration role that removes old Zabbix services, packages, repositories, and local state from hosts. |
@@ -75,26 +75,21 @@ truth rather than restating it.
 
 ## DNS Boundary
 
-Daedalus manages DNS server packages, service state, listen addresses, and host
-configuration. Recursive DNS hosts run Unbound and stub internal zones to the
-authoritative DNS hosts. Authoritative DNS hosts run NSD from zone registration
-metadata.
-
-Daedalus does not currently manage authoritative zone record contents. Zone
-files such as `/etc/nsd/zones/alflag.internal.zone` are manually maintained on
-the DNS hosts for now. See [docs/dns.md](dns.md) for the operational boundary
-and validation commands.
+Daedalus manages DNS server packages, service state, listen addresses, host
+configuration, and managed authoritative zone contents. Recursive DNS hosts run
+Unbound and stub internal zones to the authoritative DNS hosts. Authoritative
+DNS hosts run NSD from inventory-backed zone registration and generated zone
+files. See [docs/dns.md](dns.md) for the operational boundary and validation
+commands.
 
 ## Required Internal DNS Records
 
-Daedalus does not currently keep authoritative zone record contents as managed
-state. DNS names, aliases, and address metadata that are needed by services
-belong in inventory vars until DNS zone contents move under an explicit managed
-source of truth.
+Daedalus keeps managed authoritative DNS record contents in inventory vars. DNS
+names, aliases, and address metadata that are needed by services belong in
+inventory vars.
 
-Do not duplicate DNS record values in docs. Use inventory metadata and the
-manually maintained authoritative zone files when records need to be created or
-verified.
+Do not duplicate DNS record values in docs. Use inventory metadata and generated
+authoritative zone files when records need to be created or verified.
 
 ## External State
 
@@ -109,8 +104,8 @@ Daedalus does not currently manage:
 - Alertmanager notification receivers
 - Grafana dashboard curation beyond the initial Daedalus provider
 - application containers
-- authoritative DNS zone migration unless `dns_authoritative_zones` explicitly
-  provides zone text
+- DNSSEC signing
+- external DNS zone writes
 
 Those boundaries are deliberate. They can move to Terraform or a future
 Daedalus component after the host-side state is stable.

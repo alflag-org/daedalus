@@ -239,30 +239,127 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
                 }
             ],
         )
+        self.assertEqual(
+            group_vars["dns_recursor_validation_queries"],
+            [
+                {"name": "alflag.internal", "type": "SOA"},
+                {"name": "monitor01.alflag.internal", "type": "A"},
+                {"name": "web01.alflag.internal", "type": "A"},
+            ],
+        )
 
-    def test_dns_authoritative_keeps_zone_text_manual(self) -> None:
-        tasks = load_yaml("ansible/roles/dns_authoritative/tasks/main.yml")
-        by_name = {task["name"]: task for task in tasks}
+    def test_dns_authoritative_manages_structured_zone_contents(self) -> None:
         group_vars = load_yaml(
             "ansible/inventories/default/group_vars/svc_dns_authoritative.yml"
         )
 
-        render = by_name["Render authoritative DNS zones from explicit text"]
-        self.assertIn("item.text is defined", render["when"])
-        self.assertIn("content", render["ansible.builtin.copy"])
+        zones = group_vars["dns_authoritative_zones"]
+        self.assertEqual(
+            {zone["name"] for zone in zones},
+            {
+                "alflag.internal",
+                "10.10.10.in-addr.arpa",
+                "10.10.30.in-addr.arpa",
+            },
+        )
+        self.assertTrue(all(zone.get("managed") is True for zone in zones))
+        self.assertTrue(all("records" in zone for zone in zones))
+        self.assertTrue(all("serial" in zone for zone in zones))
+        self.assertTrue(all("text" not in zone for zone in zones))
+
+    def test_dns_authoritative_tasks_render_and_validate_managed_zones(self) -> None:
+        tasks = load_yaml("ansible/roles/dns_authoritative/tasks/main.yml")
+        by_name = {task["name"]: task for task in tasks}
+
+        render = by_name["Render managed authoritative DNS zones"]
+        self.assertIn("ansible.builtin.template", render)
+        self.assertEqual(render["ansible.builtin.template"]["src"], "zone.j2")
+        self.assertIn(
+            "nsd-checkzone",
+            render["ansible.builtin.template"]["validate"],
+        )
+        self.assertIn("item.managed | default(false) | bool", render["when"])
+
+        manual_check = by_name["Check manual authoritative DNS zone files"]
+        self.assertIn(
+            "not (item.managed | default(false) | bool)",
+            manual_check["when"],
+        )
+        self.assertIn("item.text is not defined", manual_check["when"])
+
+        explicit_text = by_name["Render authoritative DNS zones from explicit text"]
+        self.assertIn(
+            "not (item.managed | default(false) | bool)",
+            explicit_text["when"],
+        )
+        self.assertIn("item.text is defined", explicit_text["when"])
 
         self.assertIn("Require manual authoritative DNS zone files", by_name)
         self.assertIn("Validate authoritative DNS zones", by_name)
-        self.assertEqual(
-            group_vars["dns_authoritative_zones"],
-            [
-                {
-                    "name": "alflag.internal",
-                    "file": "/etc/nsd/zones/alflag.internal.zone",
-                }
-            ],
+
+    def test_dns_authoritative_records_cover_managed_hosts(self) -> None:
+        group_vars = load_yaml(
+            "ansible/inventories/default/group_vars/svc_dns_authoritative.yml"
         )
-        self.assertNotIn("text", group_vars["dns_authoritative_zones"][0])
+        zones = {zone["name"]: zone for zone in group_vars["dns_authoritative_zones"]}
+
+        self.assertNotIn("10.10.0.in-addr.arpa", zones)
+        self.assertNotIn("10.255.255.in-addr.arpa", zones)
+
+        forward_records = {
+            record["name"]: record for record in zones["alflag.internal"]["records"]
+        }
+        expected_a_records = {
+            "dns-recursive01": "10.10.10.240",
+            "dns-recursive02": "10.10.10.241",
+            "dns-authoritative01": "10.10.10.242",
+            "dns-authoritative02": "10.10.10.243",
+            "monitor01": "10.10.10.250",
+            "mysql-shared01": "10.10.10.221",
+            "connector01": "10.10.10.41",
+            "connector02": "10.10.10.42",
+            "bastion01": "10.10.10.60",
+            "workbench01": "10.10.10.61",
+            "control01": "10.10.10.62",
+            "web01": "10.10.30.21",
+        }
+        for name, value in expected_a_records.items():
+            self.assertEqual(forward_records[name]["type"], "A")
+            self.assertEqual(forward_records[name]["value"], value)
+
+        cnames = [
+            record for record in forward_records.values() if record["type"] == "CNAME"
+        ]
+        self.assertTrue(cnames)
+        self.assertTrue(all(record["value"].endswith(".") for record in cnames))
+
+        mgmt_ptr_records = {
+            record["name"]: record
+            for record in zones["10.10.10.in-addr.arpa"]["records"]
+        }
+        expected_mgmt_ptr_records = {
+            "240": "dns-recursive01.alflag.internal.",
+            "241": "dns-recursive02.alflag.internal.",
+            "242": "dns-authoritative01.alflag.internal.",
+            "243": "dns-authoritative02.alflag.internal.",
+            "250": "monitor01.alflag.internal.",
+            "221": "mysql-shared01.alflag.internal.",
+            "41": "connector01.alflag.internal.",
+            "42": "connector02.alflag.internal.",
+            "60": "bastion01.alflag.internal.",
+            "61": "workbench01.alflag.internal.",
+            "62": "control01.alflag.internal.",
+        }
+        for name, value in expected_mgmt_ptr_records.items():
+            self.assertEqual(mgmt_ptr_records[name]["type"], "PTR")
+            self.assertEqual(mgmt_ptr_records[name]["value"], value)
+
+        dmz_ptr_records = {
+            record["name"]: record
+            for record in zones["10.10.30.in-addr.arpa"]["records"]
+        }
+        self.assertEqual(dmz_ptr_records["21"]["type"], "PTR")
+        self.assertEqual(dmz_ptr_records["21"]["value"], "web01.alflag.internal.")
 
     def test_docs_describe_dns_and_role_boundaries(self) -> None:
         components = read_text("docs/components.md")
@@ -271,7 +368,8 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
 
         self.assertIn("Do not duplicate DNS record values in docs", components)
         self.assertIn("private service implementation roles", layout)
-        self.assertIn("Authoritative zone record contents remain manual", dns)
+        self.assertIn("Daedalus manages authoritative zone contents", dns)
+        self.assertIn("Do not edit generated zone files manually", dns)
 
     def test_docs_do_not_duplicate_network_state(self) -> None:
         docs_text = "\n".join(
