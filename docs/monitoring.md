@@ -17,6 +17,9 @@ Daedalus only prepares Prometheus to read them.
 The initial metrics boundary is MGMT-to-MGMT and MGMT-to-DMZ pull scraping.
 DMZ-to-MGMT metrics push is not used.
 
+The shared MySQL service is retained as independent infrastructure. It is not a
+Zabbix component and is not removed by this migration.
+
 Grafana, Prometheus, and Alertmanager are internal services. Do not expose them
 directly to the Internet. Use Cloudflare Access or MGMT-only access for the
 Grafana UI.

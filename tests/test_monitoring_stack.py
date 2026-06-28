@@ -25,8 +25,8 @@ class MonitoringStackTest(unittest.TestCase):
         imports = [entry["ansible.builtin.import_playbook"] for entry in services]
 
         self.assertIn("services/monitoring.yml", imports)
+        self.assertIn("services/mysql.yml", imports)
         self.assertNotIn(LEGACY_MONITORING_PLAYBOOK, imports)
-        self.assertNotIn("services/mysql.yml", imports)
 
     def test_monitoring_playbook_targets_service_group(self) -> None:
         monitoring = load_yaml("ansible/playbooks/components/services/monitoring.yml")
@@ -74,6 +74,7 @@ class MonitoringStackTest(unittest.TestCase):
 
         self.assertNotIn(LEGACY_MONITORING_GROUP, groups)
         self.assertIn("svc_monitoring", groups)
+        self.assertIn("svc_mysql", groups)
         for group in groups.values():
             self.assertNotIn(LEGACY_MONITORING_HOST, group.get("hosts", {}))
         self.assertIn("kng01-mgmt-monitor-01", groups["svc_monitoring"]["hosts"])

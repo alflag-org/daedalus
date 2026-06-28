@@ -55,5 +55,10 @@ Prometheus reads file-based service discovery targets prepared under
 `/var/lib/prometheus/file_sd`. Daedalus creates the directory and configures
 Prometheus to read it. Hermes owns the generated target files.
 
+The shared MySQL service is not part of the monitoring migration. It remains a
+generic data service with no workload databases or users declared by default.
+Do not remove it as part of Zabbix cleanup unless that is made as a separate
+explicit infrastructure decision.
+
 Grafana and Prometheus should stay behind MGMT-only access or Cloudflare Access.
 Do not expose either UI directly to the Internet.

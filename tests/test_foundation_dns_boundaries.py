@@ -53,10 +53,8 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             self.assertIn(monitor, groups[group]["hosts"])
 
         self.assertNotIn(LEGACY_MONITORING_GROUP, groups)
-        self.assertNotIn(LEGACY_MYSQL_GROUP, groups)
         for group in groups.values():
             self.assertNotIn(LEGACY_MONITORING_HOST, group.get("hosts", {}))
-            self.assertNotIn(LEGACY_MYSQL_HOST, group.get("hosts", {}))
 
         host_vars = load_yaml(
             "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-monitor-01.yml"
@@ -64,6 +62,29 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         self.assertEqual(host_vars["hostname"], monitor)
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.250")
         self.assertTrue(host_vars["monitoring_stack_enabled"])
+
+    def test_shared_mysql_service_remains_independent(self) -> None:
+        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
+        groups = inventory["all"]["children"]["kanagawa01"]["children"]
+
+        self.assertIn(LEGACY_MYSQL_HOST, groups["kng01_mgmt"]["hosts"])
+        self.assertEqual(
+            groups["kng01_mgmt"]["hosts"][LEGACY_MYSQL_HOST]["ansible_host"],
+            "10.10.10.221",
+        )
+        for group in ("provider_proxmox", "platform_vm", LEGACY_MYSQL_GROUP):
+            self.assertIn(LEGACY_MYSQL_HOST, groups[group]["hosts"])
+
+        host_vars = load_yaml(
+            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
+        self.assertEqual(host_vars["purpose"], "shared")
+        self.assertNotIn("zabbix_agent_enabled", host_vars)
+
+        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_mysql.yml")
+        self.assertEqual(group_vars["mysql_service_intended_components"], ["mysql-server"])
+        self.assertEqual(group_vars["mysql_server_databases"], [])
+        self.assertEqual(group_vars["mysql_server_users"], [])
 
     def test_dns_hosts_are_grouped_and_metadata_backed(self) -> None:
         inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")

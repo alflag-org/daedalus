@@ -37,6 +37,7 @@ operators should target that playbook deliberately.
 | `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts, including internal stub-zone or forward-zone metadata. |
 | `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from zone metadata. Zone record contents remain manually maintained unless explicit text is provided. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
+| `services/mysql` | `mysql_server_enabled` | Converges the generic shared MySQL data service using private `components/mysql_server` internals. It is independent from monitoring. |
 | `node_exporter` | `node_exporter_enabled` | Installs `prometheus-node-exporter` on monitored hosts and renders its system defaults. |
 | `services/monitoring` | `monitoring_stack_enabled` | Converges the monitoring service host using private Prometheus, Alertmanager, Grafana, and blackbox exporter component roles. |
 
@@ -126,6 +127,7 @@ atlas run infra check --site kanagawa01 --limit kng01-mgmt-control-01
 atlas run infra ping --site kanagawa01 --limit kng01-mgmt-monitor-01
 atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-monitor-01
 atlas run infra check --site kanagawa01 --limit svc_monitoring
+atlas run infra check --site kanagawa01 --limit svc_mysql
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
