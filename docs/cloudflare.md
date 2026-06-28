@@ -1,7 +1,6 @@
 # Cloudflare Host-Side Components
 
-Daedalus manages only the host-side pieces needed for topmost01 Cloudflare
-connectivity:
+Daedalus manages only the host-side pieces needed for Cloudflare connectivity:
 
 - `cloudflared` installation
 - `/etc/cloudflared` ownership and token environment file rendering
@@ -21,8 +20,8 @@ For apply runs, `cloudflared_enabled=true` requires:
 cloudflared_tunnel_token: "..."
 ```
 
-The value can come from the operator secret store, the site-local operator vars
-file loaded by `infra`, or an operator-provided extra var. Daedalus renders:
+The value can come from the operator secret store, the operator vars file
+loaded by `infra`, or an operator-provided extra var. Daedalus renders:
 
 ```text
 /etc/cloudflared/token.env
@@ -80,8 +79,8 @@ work.
 Focused checks from the control node:
 
 ```bash
-atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-connector-01
-atlas run infra check --site topmost01 --playbook cloudflare --limit topmost01-mgmt-bastion-01
+atlas run infra check --site default --playbook cloudflare --limit connector01
+atlas run infra check --site default --playbook cloudflare --limit bastion01
 ```
 
 After apply, validate local host-side state:

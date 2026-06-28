@@ -4,12 +4,12 @@ Use Atlas or the generated `infra` shim for production runs:
 
 ```bash
 atlas run infra check
-atlas run infra diff --site topmost01 --limit cap_control_node
-atlas run infra apply --yes --site topmost01 --limit svc_dns_recursive
+atlas run infra diff --site default --limit cap_control_node
+atlas run infra apply --yes --site default --limit svc_dns_recursive
 ```
 
-Use `infra sites` and `infra playbooks` before targeting a non-default site or
-public playbook entrypoint.
+Use `infra sites` and `infra playbooks` before targeting a non-default
+inventory selector or public playbook entrypoint.
 
 The `infra` wrapper installs missing Ansible collections from
 `ansible/collections/requirements.yml` before playbook runs, so normal Atlas
@@ -29,8 +29,8 @@ Keep plaintext secrets out of git. Keep shared secret values in the agreed
 operator secret store, and pass operator-local vars from files outside this
 repository.
 
-The `infra` wrapper automatically loads the first existing site-local operator
-vars file from:
+The `infra` wrapper automatically loads the first existing operator vars file
+for the selected inventory from:
 
 ```text
 ~/.config/daedalus/<site>.yml
@@ -47,8 +47,8 @@ Prometheus, Grafana, Alertmanager, and blackbox exporter converge. Target it as
 a normal service group:
 
 ```bash
-atlas run infra check --site topmost01 --limit svc_monitoring
-atlas run infra apply --yes --site topmost01 --limit svc_monitoring
+atlas run infra check --site default --limit svc_monitoring
+atlas run infra apply --yes --site default --limit svc_monitoring
 ```
 
 Prometheus reads file-based service discovery targets prepared under

@@ -1,7 +1,7 @@
 # First Control Node Bootstrap
 
-`topmost01-mgmt-control-01` is the first topmost01 control node. It is the root of
-configuration management for the site and is intentionally bootstrapped by hand.
+`control01` is the first control node. It is the root of configuration
+management and is intentionally bootstrapped by hand.
 
 Daedalus is Atlas-operated and Ansible-backed. It needs Atlas, an Atlas scripts
 runtime, Ansible, SSH material, and access to operator-managed secrets before it
@@ -11,19 +11,19 @@ itself before it can run.
 
 ## Role
 
-`topmost01-mgmt-control-01` runs operator-triggered commands such as:
+`control01` runs operator-triggered commands such as:
 
 ```bash
-atlas run infra inventory --site topmost01
-atlas run infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
-atlas run infra check --site topmost01 --limit cap_control_node
+atlas run infra inventory --site default
+atlas run infra ping --site default --limit dns-recursive01
+atlas run infra check --site default --limit cap_control_node
 ```
 
 Daedalus may validate this host and manage non-dangerous configuration on it,
 but it must not rebuild or replace the active Atlas runtime by default.
 
-Future control nodes, replacement control nodes, or control nodes in other sites
-can be provisioned from an already-working control node.
+Future control nodes and replacement control nodes can be provisioned from an
+already-working control node.
 
 ## Minimal Manual Bootstrap
 
@@ -54,7 +54,7 @@ The first control node is expected to have at least:
 - `/home/ops/.local/share/atlas-cli-venv`
 - `/home/ops/.ssh/infra`
 
-`/opt/atlas/tmp` is the default runtime build temporary directory for this site.
+`/opt/atlas/tmp` is the default runtime build temporary directory for this host.
 `/var/lib/atlas/cache/python-build` is the default Python build cache.
 
 ## Required Secrets
@@ -75,11 +75,11 @@ atlas status
 atlas runtime status
 atlas scripts list --verbose
 ansible-inventory --version
-atlas run infra inventory --site topmost01
-atlas run infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
-atlas run infra check --site topmost01 --limit svc_dns_recursive
-atlas run infra check --site topmost01 --limit cap_control_node
-atlas run infra diff --site topmost01 --limit cap_control_node
+atlas run infra inventory --site default
+atlas run infra ping --site default --limit dns-recursive01
+atlas run infra check --site default --limit svc_dns_recursive
+atlas run infra check --site default --limit cap_control_node
+atlas run infra diff --site default --limit cap_control_node
 ```
 
 The first control node should be assigned to these inventory groups:

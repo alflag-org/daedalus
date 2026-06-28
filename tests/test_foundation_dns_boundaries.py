@@ -7,12 +7,12 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEGACY_MONITORING_NAME = "zab" + "bix"
 LEGACY_MONITORING_GROUP = "svc_" + LEGACY_MONITORING_NAME
-LEGACY_MONITORING_HOST = f"topmost01-mgmt-{LEGACY_MONITORING_NAME}-01"
+LEGACY_MONITORING_HOST = f"{LEGACY_MONITORING_NAME}01"
 LEGACY_AGENT_ROLE = f"{LEGACY_MONITORING_NAME}_agent"
 LEGACY_SERVICE_ROLE = f"services/{LEGACY_MONITORING_NAME}"
 LEGACY_SERVER_COMPONENT = f"components/{LEGACY_MONITORING_NAME}_server"
-LEGACY_MYSQL_GROUP = "svc_" + "mysql"
-LEGACY_MYSQL_HOST = "topmost01-mgmt-" + "mysql-shared-01"
+MYSQL_GROUP = "svc_" + "mysql"
+MYSQL_HOST = "mysql-shared01"
 
 
 def load_yaml(path: str):
@@ -25,30 +25,30 @@ def read_text(path: str) -> str:
 
 class FoundationDnsBoundariesTest(unittest.TestCase):
     def test_workbench_is_vm_and_bastion_remains(self) -> None:
-        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
-        groups = inventory["all"]["children"]["topmost01"]["children"]
+        inventory = load_yaml("ansible/inventories/default/hosts.yml")
+        groups = inventory["all"]["children"]["default"]["children"]
 
-        self.assertIn("topmost01-mgmt-workbench-01", groups["platform_vm"]["hosts"])
-        self.assertNotIn("topmost01-mgmt-workbench-01", groups["platform_lxc"]["hosts"])
-        self.assertIn("topmost01-mgmt-bastion-01", groups["topmost01_mgmt"]["hosts"])
-        self.assertIn("topmost01-mgmt-bastion-01", groups["svc_bastion"]["hosts"])
+        self.assertIn("workbench01", groups["platform_vm"]["hosts"])
+        self.assertNotIn("workbench01", groups["platform_lxc"]["hosts"])
+        self.assertIn("bastion01", groups["mgmt"]["hosts"])
+        self.assertIn("bastion01", groups["svc_bastion"]["hosts"])
 
         host_vars = load_yaml(
-            "ansible/inventories/topmost01/host_vars/topmost01-mgmt-workbench-01.yml"
+            "ansible/inventories/default/host_vars/workbench01.yml"
         )
         self.assertEqual(host_vars["virtualization_type"], "vm")
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.61")
 
-        site_vars = load_yaml("ansible/inventories/topmost01/group_vars/topmost01.yml")
+        site_vars = load_yaml("ansible/inventories/default/group_vars/default.yml")
         self.assertTrue(site_vars["node_exporter_enabled"])
 
     def test_monitor_host_replaces_legacy_monitoring_inventory(self) -> None:
-        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
-        groups = inventory["all"]["children"]["topmost01"]["children"]
+        inventory = load_yaml("ansible/inventories/default/hosts.yml")
+        groups = inventory["all"]["children"]["default"]["children"]
 
-        monitor = "topmost01-mgmt-monitor-01"
+        monitor = "monitor01"
         self.assertEqual(
-            groups["topmost01_mgmt"]["hosts"][monitor]["ansible_host"], "10.10.10.250"
+            groups["mgmt"]["hosts"][monitor]["ansible_host"], "10.10.10.250"
         )
         for group in ("provider_proxmox", "platform_vm", "svc_monitoring"):
             self.assertIn(monitor, groups[group]["hosts"])
@@ -58,31 +58,31 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             self.assertNotIn(LEGACY_MONITORING_HOST, group.get("hosts", {}))
 
         host_vars = load_yaml(
-            "ansible/inventories/topmost01/host_vars/topmost01-mgmt-monitor-01.yml"
+            "ansible/inventories/default/host_vars/monitor01.yml"
         )
         self.assertEqual(host_vars["hostname"], monitor)
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.250")
         self.assertTrue(host_vars["monitoring_stack_enabled"])
 
     def test_shared_mysql_service_remains_independent(self) -> None:
-        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
-        groups = inventory["all"]["children"]["topmost01"]["children"]
+        inventory = load_yaml("ansible/inventories/default/hosts.yml")
+        groups = inventory["all"]["children"]["default"]["children"]
 
-        self.assertIn(LEGACY_MYSQL_HOST, groups["topmost01_mgmt"]["hosts"])
+        self.assertIn(MYSQL_HOST, groups["mgmt"]["hosts"])
         self.assertEqual(
-            groups["topmost01_mgmt"]["hosts"][LEGACY_MYSQL_HOST]["ansible_host"],
+            groups["mgmt"]["hosts"][MYSQL_HOST]["ansible_host"],
             "10.10.10.221",
         )
-        for group in ("provider_proxmox", "platform_vm", LEGACY_MYSQL_GROUP):
-            self.assertIn(LEGACY_MYSQL_HOST, groups[group]["hosts"])
+        for group in ("provider_proxmox", "platform_vm", MYSQL_GROUP):
+            self.assertIn(MYSQL_HOST, groups[group]["hosts"])
 
         host_vars = load_yaml(
-            "ansible/inventories/topmost01/host_vars/topmost01-mgmt-mysql-shared-01.yml"
+            "ansible/inventories/default/host_vars/mysql-shared01.yml"
         )
         self.assertEqual(host_vars["purpose"], "shared")
         self.assertNotIn("zabbix_agent_enabled", host_vars)
 
-        group_vars = load_yaml("ansible/inventories/topmost01/group_vars/svc_mysql.yml")
+        group_vars = load_yaml("ansible/inventories/default/group_vars/svc_mysql.yml")
         self.assertEqual(
             group_vars["mysql_service_intended_components"], ["mysql-server"]
         )
@@ -90,29 +90,29 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         self.assertEqual(group_vars["mysql_server_users"], [])
 
     def test_dns_hosts_are_grouped_and_metadata_backed(self) -> None:
-        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
-        groups = inventory["all"]["children"]["topmost01"]["children"]
+        inventory = load_yaml("ansible/inventories/default/hosts.yml")
+        groups = inventory["all"]["children"]["default"]["children"]
 
         self.assertEqual(
             set(groups["svc_dns_recursive"]["hosts"]),
-            {"topmost01-mgmt-dns-recursive-01", "topmost01-mgmt-dns-recursive-02"},
+            {"dns-recursive01", "dns-recursive02"},
         )
         self.assertEqual(
             set(groups["svc_dns_authoritative"]["hosts"]),
             {
-                "topmost01-mgmt-dns-authoritative-01",
-                "topmost01-mgmt-dns-authoritative-02",
+                "dns-authoritative01",
+                "dns-authoritative02",
             },
         )
 
         expected_addresses = {
-            "topmost01-mgmt-dns-recursive-01": "10.10.10.240",
-            "topmost01-mgmt-dns-recursive-02": "10.10.10.241",
-            "topmost01-mgmt-dns-authoritative-01": "10.10.10.242",
-            "topmost01-mgmt-dns-authoritative-02": "10.10.10.243",
+            "dns-recursive01": "10.10.10.240",
+            "dns-recursive02": "10.10.10.241",
+            "dns-authoritative01": "10.10.10.242",
+            "dns-authoritative02": "10.10.10.243",
         }
         for host, address in expected_addresses.items():
-            host_vars = load_yaml(f"ansible/inventories/topmost01/host_vars/{host}.yml")
+            host_vars = load_yaml(f"ansible/inventories/default/host_vars/{host}.yml")
             self.assertEqual(host_vars["hostname"], host)
             self.assertEqual(host_vars["network_ipv4_address"], address)
             self.assertIn("network_primary_fqdn", host_vars)
@@ -179,7 +179,7 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             self.assertNotIn(removed_ref, active_text)
 
     def test_retired_monitoring_cleanup_removes_zabbix_artifacts(self) -> None:
-        site_vars = load_yaml("ansible/inventories/topmost01/group_vars/topmost01.yml")
+        site_vars = load_yaml("ansible/inventories/default/group_vars/default.yml")
         defaults = load_yaml(
             "ansible/roles/retired_monitoring_cleanup/defaults/main.yml"
         )
@@ -214,7 +214,7 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             "ansible/roles/dns_recursor/templates/daedalus-recursive.conf.j2"
         )
         group_vars = load_yaml(
-            "ansible/inventories/topmost01/group_vars/svc_dns_recursive.yml"
+            "ansible/inventories/default/group_vars/svc_dns_recursive.yml"
         )
 
         self.assertIn("stub-zone:", template)
@@ -238,7 +238,7 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         tasks = load_yaml("ansible/roles/dns_authoritative/tasks/main.yml")
         by_name = {task["name"]: task for task in tasks}
         group_vars = load_yaml(
-            "ansible/inventories/topmost01/group_vars/svc_dns_authoritative.yml"
+            "ansible/inventories/default/group_vars/svc_dns_authoritative.yml"
         )
 
         render = by_name["Render authoritative DNS zones from explicit text"]

@@ -6,7 +6,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEGACY_MONITORING_NAME = "zab" + "bix"
 LEGACY_MONITORING_GROUP = "svc_" + LEGACY_MONITORING_NAME
-LEGACY_MONITORING_HOST = f"topmost01-mgmt-{LEGACY_MONITORING_NAME}-01"
+LEGACY_MONITORING_HOST = f"{LEGACY_MONITORING_NAME}01"
 LEGACY_MONITORING_PLAYBOOK = f"services/{LEGACY_MONITORING_NAME}.yml"
 
 
@@ -90,15 +90,15 @@ class MonitoringStackTest(unittest.TestCase):
         self.assertEqual(validate["timeout"], "{{ grafana_port_validation_timeout }}")
 
     def test_inventory_has_no_legacy_monitoring_group_or_host(self) -> None:
-        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
-        groups = inventory["all"]["children"]["topmost01"]["children"]
+        inventory = load_yaml("ansible/inventories/default/hosts.yml")
+        groups = inventory["all"]["children"]["default"]["children"]
 
         self.assertNotIn(LEGACY_MONITORING_GROUP, groups)
         self.assertIn("svc_monitoring", groups)
         self.assertIn("svc_mysql", groups)
         for group in groups.values():
             self.assertNotIn(LEGACY_MONITORING_HOST, group.get("hosts", {}))
-        self.assertIn("topmost01-mgmt-monitor-01", groups["svc_monitoring"]["hosts"])
+        self.assertIn("monitor01", groups["svc_monitoring"]["hosts"])
 
 
 if __name__ == "__main__":
