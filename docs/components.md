@@ -69,7 +69,7 @@ Platform intent should stay explicit:
 - `svc_*` groups express service intent; `components/*` roles are implementation
   details and are not selected directly from inventory.
 
-Service-specific host metadata, DNS aliases, bind addresses, and validation
+Service-specific host metadata, DNS names, bind addresses, and validation
 targets belong in inventory vars. Documentation should link to that source of
 truth rather than restating it.
 
@@ -85,11 +85,13 @@ commands.
 ## Required Internal DNS Records
 
 Daedalus keeps managed authoritative DNS record contents in inventory vars. DNS
-names, aliases, and address metadata that are needed by services belong in
-inventory vars.
+names, access endpoints, and address metadata that are needed by services
+belong in inventory vars.
 
 Do not duplicate DNS record values in docs. Use inventory metadata and generated
-authoritative zone files when records need to be created or verified.
+authoritative zone files when records need to be created or verified. Server
+identity records live under `srv.alflag.internal`; access endpoint records live
+under `access.internal`.
 
 ## External State
 

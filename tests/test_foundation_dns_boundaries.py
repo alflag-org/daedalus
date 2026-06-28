@@ -236,15 +236,19 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
                 {
                     "name": "alflag.internal",
                     "servers": ["10.10.10.242", "10.10.10.243"],
-                }
+                },
+                {
+                    "name": "access.internal",
+                    "servers": ["10.10.10.242", "10.10.10.243"],
+                },
             ],
         )
         self.assertEqual(
             group_vars["dns_recursor_validation_queries"],
             [
                 {"name": "alflag.internal", "type": "SOA"},
-                {"name": "monitor01.alflag.internal", "type": "A"},
-                {"name": "web01.alflag.internal", "type": "A"},
+                {"name": "mgmt-monitor-01.srv.alflag.internal", "type": "A"},
+                {"name": "web.access.internal", "type": "A"},
             ],
         )
 
@@ -258,10 +262,14 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
             {zone["name"] for zone in zones},
             {
                 "alflag.internal",
+                "srv.alflag.internal",
+                "access.internal",
                 "10.10.10.in-addr.arpa",
                 "10.10.30.in-addr.arpa",
             },
         )
+        self.assertNotIn("minecraft.internal", {zone["name"] for zone in zones})
+        self.assertNotIn("service.internal", {zone["name"] for zone in zones})
         self.assertTrue(all(zone.get("managed") is True for zone in zones))
         self.assertTrue(all("records" in zone for zone in zones))
         self.assertTrue(all("serial" in zone for zone in zones))
@@ -303,63 +311,88 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         )
         zones = {zone["name"]: zone for zone in group_vars["dns_authoritative_zones"]}
 
+        self.assertNotIn("minecraft.internal", zones)
+        self.assertNotIn("service.internal", zones)
         self.assertNotIn("10.10.0.in-addr.arpa", zones)
         self.assertNotIn("10.255.255.in-addr.arpa", zones)
+        self.assertEqual(zones["alflag.internal"]["records"], [])
 
-        forward_records = {
-            record["name"]: record for record in zones["alflag.internal"]["records"]
+        srv_records = {
+            record["name"]: record
+            for record in zones["srv.alflag.internal"]["records"]
         }
-        expected_a_records = {
-            "dns-recursive01": "10.10.10.240",
-            "dns-recursive02": "10.10.10.241",
-            "dns-authoritative01": "10.10.10.242",
-            "dns-authoritative02": "10.10.10.243",
-            "monitor01": "10.10.10.250",
-            "mysql-shared01": "10.10.10.221",
-            "connector01": "10.10.10.41",
-            "connector02": "10.10.10.42",
-            "bastion01": "10.10.10.60",
-            "workbench01": "10.10.10.61",
-            "control01": "10.10.10.62",
-            "web01": "10.10.30.21",
+        expected_srv_records = {
+            "mgmt-recdns-01": "10.10.10.240",
+            "mgmt-recdns-02": "10.10.10.241",
+            "mgmt-authdns-01": "10.10.10.242",
+            "mgmt-authdns-02": "10.10.10.243",
+            "mgmt-monitor-01": "10.10.10.250",
+            "mgmt-mysql-shared-01": "10.10.10.221",
+            "mgmt-connector-01": "10.10.10.41",
+            "mgmt-connector-02": "10.10.10.42",
+            "mgmt-bastion-01": "10.10.10.60",
+            "mgmt-workbench-01": "10.10.10.61",
+            "mgmt-control-01": "10.10.10.62",
+            "dmz-web-01": "10.10.30.21",
         }
-        for name, value in expected_a_records.items():
-            self.assertEqual(forward_records[name]["type"], "A")
-            self.assertEqual(forward_records[name]["value"], value)
+        for name, value in expected_srv_records.items():
+            self.assertEqual(srv_records[name]["type"], "A")
+            self.assertEqual(srv_records[name]["value"], value)
 
-        cnames = [
-            record for record in forward_records.values() if record["type"] == "CNAME"
+        access_records = {
+            record["name"]: record for record in zones["access.internal"]["records"]
+        }
+        expected_access_records = {
+            "grafana": "10.10.10.250",
+            "prometheus": "10.10.10.250",
+            "alertmanager": "10.10.10.250",
+            "mysql-shared": "10.10.10.221",
+            "web": "10.10.30.21",
+            "workbench": "10.10.10.61",
+        }
+        for name, value in expected_access_records.items():
+            self.assertEqual(access_records[name]["type"], "A")
+            self.assertEqual(access_records[name]["value"], value)
+
+        all_records = [
+            record
+            for zone in zones.values()
+            for record in zone["records"]
         ]
-        self.assertTrue(cnames)
-        self.assertTrue(all(record["value"].endswith(".") for record in cnames))
+        self.assertNotIn("CNAME", {record["type"] for record in all_records})
 
         mgmt_ptr_records = {
             record["name"]: record
             for record in zones["10.10.10.in-addr.arpa"]["records"]
         }
         expected_mgmt_ptr_records = {
-            "240": "dns-recursive01.alflag.internal.",
-            "241": "dns-recursive02.alflag.internal.",
-            "242": "dns-authoritative01.alflag.internal.",
-            "243": "dns-authoritative02.alflag.internal.",
-            "250": "monitor01.alflag.internal.",
-            "221": "mysql-shared01.alflag.internal.",
-            "41": "connector01.alflag.internal.",
-            "42": "connector02.alflag.internal.",
-            "60": "bastion01.alflag.internal.",
-            "61": "workbench01.alflag.internal.",
-            "62": "control01.alflag.internal.",
+            "240": "mgmt-recdns-01.srv.alflag.internal.",
+            "241": "mgmt-recdns-02.srv.alflag.internal.",
+            "242": "mgmt-authdns-01.srv.alflag.internal.",
+            "243": "mgmt-authdns-02.srv.alflag.internal.",
+            "250": "mgmt-monitor-01.srv.alflag.internal.",
+            "221": "mgmt-mysql-shared-01.srv.alflag.internal.",
+            "41": "mgmt-connector-01.srv.alflag.internal.",
+            "42": "mgmt-connector-02.srv.alflag.internal.",
+            "60": "mgmt-bastion-01.srv.alflag.internal.",
+            "61": "mgmt-workbench-01.srv.alflag.internal.",
+            "62": "mgmt-control-01.srv.alflag.internal.",
         }
         for name, value in expected_mgmt_ptr_records.items():
             self.assertEqual(mgmt_ptr_records[name]["type"], "PTR")
             self.assertEqual(mgmt_ptr_records[name]["value"], value)
+            self.assertTrue(mgmt_ptr_records[name]["value"].endswith(".srv.alflag.internal."))
 
         dmz_ptr_records = {
             record["name"]: record
             for record in zones["10.10.30.in-addr.arpa"]["records"]
         }
         self.assertEqual(dmz_ptr_records["21"]["type"], "PTR")
-        self.assertEqual(dmz_ptr_records["21"]["value"], "web01.alflag.internal.")
+        self.assertEqual(
+            dmz_ptr_records["21"]["value"],
+            "dmz-web-01.srv.alflag.internal.",
+        )
+        self.assertTrue(dmz_ptr_records["21"]["value"].endswith(".srv.alflag.internal."))
 
     def test_docs_describe_dns_and_role_boundaries(self) -> None:
         components = read_text("docs/components.md")
