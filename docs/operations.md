@@ -42,45 +42,18 @@ Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` when an operator run needs a
 different file. Explicit `--extra-vars` still works and is applied after the
 auto-loaded file.
 
-For the managed Zabbix server, apply runs require these workload database
-variables:
-
-```yaml
-mysql_zabbix_password: ...
-mysql_zabbix_monitor_password: ...
-```
-
-The local MySQL root account is managed over the Unix socket and does not need
-an operator-provided database password.
-
-Store them in the KANAGAWA01 operator vars file:
+The monitoring stack does not need operator-provided secrets for the initial
+Prometheus, Grafana, Alertmanager, and blackbox exporter converge. Target it as
+a normal service group:
 
 ```bash
-mkdir -p /home/ops/.config/daedalus
-umask 077
-cat > /home/ops/.config/daedalus/kanagawa01.yml <<'EOF'
-mysql_zabbix_password: ...
-mysql_zabbix_monitor_password: ...
-EOF
+atlas run infra check --site kanagawa01 --limit svc_monitoring
+atlas run infra apply --yes --site kanagawa01 --limit svc_monitoring
 ```
 
-Then normal targeted runs do not need a repeated `--extra-vars` argument:
+Prometheus reads file-based service discovery targets prepared under
+`/var/lib/prometheus/file_sd`. Daedalus creates the directory and configures
+Prometheus to read it. Hermes owns the generated target files.
 
-```bash
-atlas run infra apply --yes --site kanagawa01 --limit kng01-mgmt-zabbix-01
-```
-
-The shared MySQL data service at `kng01-mgmt-mysql-shared-01` currently has no
-workload databases or users declared, so it does not require an operator secret
-by default. When adding a consumer, declare its database/user entries through
-`mysql_server_databases` and `mysql_server_users`, and list any required secret
-variable names in `mysql_server_required_secret_vars`.
-
-If the initial Zabbix schema import fails partway through a fresh provisioning
-run, the next apply stops when it detects the partial database instead of
-treating it as complete. For a fresh host where the Zabbix database can be
-discarded, add this one-time operator var and rerun the targeted apply:
-
-```yaml
-zabbix_server_recreate_partial_schema: true
-```
+Grafana and Prometheus should stay behind MGMT-only access or Cloudflare Access.
+Do not expose either UI directly to the Internet.

@@ -65,7 +65,7 @@ ansible/
     systemd_resolved/
     dns_recursor/
     dns_authoritative/
-    zabbix_agent/
+    node_exporter/
   collections/
 ```
 
@@ -80,7 +80,9 @@ See [docs/layout.md](docs/layout.md) for the responsibility split. See
 [docs/bootstrap-control-node.md](docs/bootstrap-control-node.md) for the first
 KANAGAWA01 control node bootstrap boundary and
 [docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role. See
-[docs/dns.md](docs/dns.md) for the DNS host-side management boundary.
+[docs/dns.md](docs/dns.md) for the DNS host-side management boundary and
+[docs/monitoring.md](docs/monitoring.md) for the Prometheus monitoring
+boundary.
 
 ## Installation
 
@@ -206,7 +208,7 @@ Inventory is now the primary place where host responsibility is expressed.
   `cap_atlas_host` and `cap_control_node`.
 - `svc_*` groups describe service intent, for example `svc_dns_recursive`,
   `svc_dns_authoritative`, `svc_connector`, `svc_bastion`, `svc_workbench`, and
-  `svc_mysql`, and `svc_zabbix`.
+  `svc_monitoring`.
 
 Playbooks are no longer the place where service intent is modeled. The public
 playbooks only define lifecycle boundaries: `site` for steady-state converge and

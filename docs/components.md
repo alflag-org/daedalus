@@ -37,9 +37,8 @@ operators should target that playbook deliberately.
 | `dns_recursor` | `dns_recursor_enabled` | Installs and configures Unbound for recursive DNS hosts, including internal stub-zone or forward-zone metadata. |
 | `dns_authoritative` | `dns_authoritative_enabled` | Installs and configures NSD from zone metadata. Zone record contents remain manually maintained unless explicit text is provided. |
 | `services/web` | `services_web_origin_enabled` | Installs nginx as a lightweight localhost-bound Web origin, renders a default page, and validates a health endpoint. |
-| `zabbix_agent` | `zabbix_agent_enabled` | Installs and configures `zabbix-agent2` on managed hosts. |
-| `services/mysql` | `mysql_server_enabled` | Converges the shared MySQL data service using private `components/mysql_server` internals. |
-| `services/zabbix` | `zabbix_server_installation_managed` | Converges the managed Zabbix host using private MySQL, Caddy, PHP-FPM, and Zabbix server/frontend component internals. |
+| `node_exporter` | `node_exporter_enabled` | Installs `prometheus-node-exporter` on monitored hosts and renders its system defaults. |
+| `services/monitoring` | `monitoring_stack_enabled` | Converges the monitoring service host using private Prometheus, Alertmanager, Grafana, and blackbox exporter component roles. |
 
 All risky roles default to disabled. Host vars opt a host into the components it
 should run.
@@ -104,9 +103,9 @@ Daedalus does not currently manage:
 - Cloudflare tunnel tokens
 - Cloudflare private hostnames
 - Cloudflare dashboard state
-- Zabbix application objects, templates, users, or dashboard content
-- plaintext Zabbix database secret storage
-- Prometheus, Grafana, or Alertmanager deployment
+- Prometheus file service-discovery target generation
+- Alertmanager notification receivers
+- Grafana dashboard curation beyond the initial Daedalus provider
 - application containers
 - authoritative DNS zone migration unless `dns_authoritative_zones` explicitly
   provides zone text
@@ -124,13 +123,9 @@ atlas run infra check --site kanagawa01 --limit kng01-mgmt-recdns-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-connector-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-mgmt-bastion-01
 atlas run infra check --site kanagawa01 --limit kng01-mgmt-control-01
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-zabbix-01
-atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-zabbix-01
-atlas run infra check --site kanagawa01 --limit kng01-mgmt-zabbix-01
-curl http://zabbix.alflag.internal/
-atlas run infra ping --site kanagawa01 --limit kng01-mgmt-mysql-shared-01
-atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-mysql-shared-01
-atlas run infra check --site kanagawa01 --limit kng01-mgmt-mysql-shared-01
+atlas run infra ping --site kanagawa01 --limit kng01-mgmt-monitor-01
+atlas run infra check --site kanagawa01 --playbook bootstrap --limit kng01-mgmt-monitor-01
+atlas run infra check --site kanagawa01 --limit svc_monitoring
 atlas run infra ping --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --limit kng01-dmz-web-01
 atlas run infra check --site kanagawa01 --playbook cloudflare --limit kng01-dmz-web-01
