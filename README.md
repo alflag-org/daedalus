@@ -13,7 +13,7 @@ Ansible backend and the small `infra` command wrapper that invokes it.
 
 ## Responsibility Boundary
 
-Daedalus is limited to the topmost01 real-host convergence layer. Atlas owns
+Daedalus is limited to the managed real-host convergence layer. Atlas owns
 runtime installation, command execution, release distribution, and run logs;
 Daedalus owns Ansible host state for the current managed infrastructure.
 
@@ -78,7 +78,7 @@ docs/
 
 See [docs/layout.md](docs/layout.md) for the responsibility split. See
 [docs/bootstrap-control-node.md](docs/bootstrap-control-node.md) for the first
-topmost01 control node bootstrap boundary and
+control node bootstrap boundary and
 [docs/atlas-host.md](docs/atlas-host.md) for the Atlas host role. See
 [docs/dns.md](docs/dns.md) for the DNS host-side management boundary and
 [docs/monitoring.md](docs/monitoring.md) for the Prometheus monitoring
@@ -122,10 +122,9 @@ Production execution should go through `atlas run` or the shim so Atlas can
 provide the release runtime, host context, and JSONL run log. Direct local Python
 entrypoints are for development only.
 
-The first topmost01 control node, `topmost01-mgmt-control-01`, is manually
-bootstrapped. Daedalus validates that host and can manage non-dangerous
-configuration, but it does not rebuild the active Atlas runtime there by
-default.
+The first control node, `control01`, is manually bootstrapped. Daedalus
+validates that host and can manage non-dangerous configuration, but it does not
+rebuild the active Atlas runtime there by default.
 
 ## CLI
 
@@ -141,7 +140,7 @@ Discovery:
 ```bash
 infra sites
 infra playbooks
-infra inventory --site topmost01
+infra inventory --site default
 ```
 
 `infra playbooks` only lists the public lifecycle entrypoints:
@@ -158,30 +157,30 @@ Reachability:
 
 ```bash
 infra ping
-infra ping --site topmost01 --limit topmost01-mgmt-dns-recursive-01
+infra ping --site default --limit dns-recursive01
 ```
 
 Dry-run validation:
 
 ```bash
 infra check
-infra check --site topmost01 --limit cap_control_node
-infra check --site topmost01 --limit svc_dns_recursive
+infra check --site default --limit cap_control_node
+infra check --site default --limit svc_dns_recursive
 ```
 
 Diff preview:
 
 ```bash
 infra diff
-infra diff --site topmost01 --limit cap_control_node
-infra diff --site topmost01 --limit svc_dns_recursive
+infra diff --site default --limit cap_control_node
+infra diff --site default --limit svc_dns_recursive
 ```
 
 Apply is the mutating action and requires explicit confirmation:
 
 ```bash
 infra apply --yes
-infra apply --yes --site topmost01 --limit svc_dns_recursive
+infra apply --yes --site default --limit svc_dns_recursive
 ```
 
 `check`, `diff`, and `apply` support these limited Ansible pass-through options:
@@ -221,7 +220,7 @@ Daedalus uses `ansible/ansible.cfg` and executes Ansible with `ansible/` as the
 working directory. Notable defaults include:
 
 ```text
-inventory = inventories/topmost01/hosts.yml
+inventory = inventories/default/hosts.yml
 roles_path = roles
 collections_path = collections
 private_key_file = ~/.ssh/infra
@@ -236,7 +235,7 @@ through the single `bootstrap` playbook, then converge back to normal
 `ops`-based runs after the roles have created the account, installed
 `~/.ssh/infra.pub`, and granted non-interactive sudo.
 
-For a new host, add it to the site inventory and assign at least:
+For a new host, add it to the inventory and assign at least:
 
 - one `platform_*` group
 - one `provider_*` group
@@ -248,8 +247,8 @@ That inventory declaration is the source of truth for what the host should run.
 Do not commit plaintext secrets. Pass operator-only secret values from the
 agreed secret store or from local files outside this repository.
 
-The `infra` wrapper automatically loads a site-local operator vars file when it
-exists:
+The `infra` wrapper automatically loads an operator vars file for the selected
+inventory when it exists:
 
 ```text
 ~/.config/daedalus/<site>.yml
@@ -257,7 +256,8 @@ exists:
 ~/.config/daedalus/<site>.json
 ```
 
-For topmost01, the default path is `~/.config/daedalus/topmost01.yml`.
+With the default inventory selector, the path is
+`~/.config/daedalus/default.yml`.
 Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` to use a different file.
 Explicit `--extra-vars` values are still supported and are passed after the
 auto-loaded file.
@@ -302,7 +302,7 @@ If you need to bypass the wrapper while debugging Ansible itself, execute from
 cd ansible
 ansible-galaxy collection install -r collections/requirements.yml -p collections
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
-  -i inventories/topmost01/hosts.yml \
+  -i inventories/default/hosts.yml \
   playbooks/site.yml \
   --check --diff
 ```
@@ -313,20 +313,20 @@ playbook, and limit.
 Bootstrap a cloud-init VM with:
 
 ```bash
-infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host>
+infra apply --yes --site default --playbook bootstrap --limit <new-host>
 ```
 
 Then run the steady-state converge for that host:
 
 ```bash
-infra apply --yes --site topmost01 --limit <new-host>
+infra apply --yes --site default --limit <new-host>
 ```
 
 Bootstrap a root-only LXC with the same playbook, but override the first login
 user for that one run:
 
 ```bash
-infra apply --yes --site topmost01 --playbook bootstrap --limit <new-host> \
+infra apply --yes --site default --playbook bootstrap --limit <new-host> \
   --extra-vars 'ansible_user=root ansible_become=false'
 ```
 
@@ -353,7 +353,7 @@ python -m pip install -e .
 infra sites
 infra playbooks
 infra inventory
-infra check --site topmost01 --limit svc_dns_recursive
+infra check --site default --limit svc_dns_recursive
 ```
 
 For documentation-only changes, inspect the rendered Markdown and confirm that

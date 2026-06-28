@@ -24,14 +24,14 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_playbook_uses_site_operator_vars_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
+            vars_path = Path(home) / ".config" / "daedalus" / "default.yml"
             vars_path.parent.mkdir(parents=True)
             vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
-                    AnsibleRunner("topmost01"),
-                    limit="topmost01-mgmt-monitor-01",
+                    AnsibleRunner("default"),
+                    limit="monitor01",
                     check=True,
                 )
 
@@ -41,13 +41,13 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_explicit_extra_vars_follow_operator_vars(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
+            vars_path = Path(home) / ".config" / "daedalus" / "default.yml"
             vars_path.parent.mkdir(parents=True)
             vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
-                    AnsibleRunner("topmost01"),
+                    AnsibleRunner("default"),
                     extra_vars="node_exporter_enabled=false",
                 )
 
@@ -60,7 +60,7 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
 
     def test_environment_override_takes_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            default_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
+            default_path = Path(home) / ".config" / "daedalus" / "default.yml"
             default_path.parent.mkdir(parents=True)
             default_path.write_text(
                 "monitoring_stack_enabled: false\n", encoding="utf-8"
@@ -76,7 +76,7 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
                 {"HOME": home, "DAEDALUS_OPERATOR_VARS": str(override_path)},
                 clear=True,
             ):
-                cmd = self.capture_playbook_cmd(AnsibleRunner("topmost01"))
+                cmd = self.capture_playbook_cmd(AnsibleRunner("default"))
 
         self.assertIn(f"@{override_path}", cmd)
         self.assertNotIn(f"@{default_path}", cmd)
@@ -93,12 +93,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
                 RuntimeError,
                 f"Operator vars file not found: {missing_path}",
             ):
-                AnsibleRunner("topmost01").playbook("site")
+                AnsibleRunner("default").playbook("site")
 
 
 class AnsibleRunnerCollectionsTest(unittest.TestCase):
     def build_runner(self, ansible_root: Path) -> AnsibleRunner:
-        runner = AnsibleRunner("topmost01")
+        runner = AnsibleRunner("default")
         runner.ansible_root = ansible_root
         return runner
 
@@ -121,7 +121,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
         )
 
     def test_playbook_enables_collection_check(self) -> None:
-        runner = AnsibleRunner("topmost01")
+        runner = AnsibleRunner("default")
 
         with (
             patch.dict(os.environ, {}, clear=True),
@@ -133,7 +133,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
         self.assertTrue(run.call_args.kwargs["ensure_collections"])
 
     def test_inventory_graph_skips_collection_check(self) -> None:
-        runner = AnsibleRunner("topmost01")
+        runner = AnsibleRunner("default")
 
         with patch.object(runner, "_run") as run:
             runner.inventory_graph()
@@ -243,7 +243,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
 
 class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
     def build_runner(self, ansible_root: Path) -> AnsibleRunner:
-        runner = AnsibleRunner("topmost01")
+        runner = AnsibleRunner("default")
         runner.ansible_root = ansible_root
         return runner
 

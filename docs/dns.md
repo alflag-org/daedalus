@@ -1,6 +1,6 @@
 # DNS Management
 
-Daedalus manages DNS server host-side state for topmost01. It does not manage
+Daedalus manages DNS server host-side state. It does not manage
 authoritative zone record contents yet.
 
 ## Hosts
@@ -46,7 +46,7 @@ both authoritative DNS hosts, then run validation.
 
 ## Add Zone Metadata
 
-Add metadata under `ansible/inventories/topmost01/group_vars/svc_dns_authoritative.yml`.
+Add metadata under `ansible/inventories/default/group_vars/svc_dns_authoritative.yml`.
 Use real values in inventory, not copied examples in docs:
 
 ```yaml
@@ -62,8 +62,8 @@ Then place the corresponding zone file manually on each authoritative DNS host.
 From the control node:
 
 ```bash
-atlas run infra check --site topmost01 --limit svc_dns_recursive
-atlas run infra check --site topmost01 --limit svc_dns_authoritative
+atlas run infra check --site default --limit svc_dns_recursive
+atlas run infra check --site default --limit svc_dns_authoritative
 ```
 
 On a recursive DNS host:
