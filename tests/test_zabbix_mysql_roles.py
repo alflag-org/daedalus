@@ -68,7 +68,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         self.assertNotIn("password", user)
 
     def test_zabbix_workload_supplies_mysql_database_and_users(self) -> None:
-        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_zabbix.yml")
+        group_vars = load_yaml("ansible/inventories/topmost01/group_vars/svc_zabbix.yml")
 
         self.assertEqual(
             group_vars["mysql_server_required_secret_vars"],
@@ -99,7 +99,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         )
 
     def test_zabbix_mysql_defaults_use_valid_auth_salts(self) -> None:
-        defaults = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_zabbix.yml")
+        defaults = load_yaml("ansible/inventories/topmost01/group_vars/svc_zabbix.yml")
 
         self.assertEqual(defaults["mysql_zabbix_auth_plugin"], "caching_sha2_password")
         self.assertEqual(len(defaults["mysql_zabbix_password_salt"]), 20)
@@ -218,12 +218,12 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
         mysql_playbook = load_yaml("ansible/playbooks/components/services/mysql.yml")
         self.assertEqual(mysql_playbook[0]["hosts"], "svc_mysql")
 
-        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
-        kanagawa01 = inventory["all"]["children"]["kanagawa01"]["children"]
-        self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["svc_mysql"]["hosts"])
-        self.assertIn("kng01-mgmt-mysql-shared-01", kanagawa01["platform_vm"]["hosts"])
+        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
+        topmost01 = inventory["all"]["children"]["topmost01"]["children"]
+        self.assertIn("topmost01-mgmt-mysql-shared-01", topmost01["svc_mysql"]["hosts"])
+        self.assertIn("topmost01-mgmt-mysql-shared-01", topmost01["platform_vm"]["hosts"])
 
-        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_mysql.yml")
+        group_vars = load_yaml("ansible/inventories/topmost01/group_vars/svc_mysql.yml")
         self.assertEqual(
             group_vars["mysql_server_bind_address"],
             "{{ network_ipv4_address | default(ansible_host) }}",
@@ -231,27 +231,27 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
 
         host_vars_path = (
             REPO_ROOT
-            / "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+            / "ansible/inventories/topmost01/host_vars/topmost01-mgmt-mysql-shared-01.yml"
         )
         self.assertTrue(host_vars_path.is_file())
         host_vars = load_yaml(str(host_vars_path.relative_to(REPO_ROOT)))
-        self.assertEqual(host_vars["hostname"], "kng01-mgmt-mysql-shared-01")
+        self.assertEqual(host_vars["hostname"], "topmost01-mgmt-mysql-shared-01")
 
     def test_mysql_shared_host_vars_match_inventory(self) -> None:
         host_vars_path = (
             REPO_ROOT
-            / "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+            / "ansible/inventories/topmost01/host_vars/topmost01-mgmt-mysql-shared-01.yml"
         )
         host_vars = load_yaml(str(host_vars_path.relative_to(REPO_ROOT)))
 
         self.assertEqual(host_vars_path.stem, host_vars["hostname"])
-        self.assertEqual(host_vars["hostname"], "kng01-mgmt-mysql-shared-01")
+        self.assertEqual(host_vars["hostname"], "topmost01-mgmt-mysql-shared-01")
         self.assertEqual(host_vars["purpose"], "shared")
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.221")
         self.assertEqual(host_vars["network_address"], "10.10.10.221/24")
         self.assertEqual(
             host_vars["network_primary_fqdn"],
-            "kng01-mgmt-mysql-shared-01.srv.alflag.internal",
+            "topmost01-mgmt-mysql-shared-01.srv.alflag.internal",
         )
         self.assertIn(
             "mysql-shared.srv.alflag.internal",
@@ -265,7 +265,7 @@ class ZabbixMysqlRolesTest(unittest.TestCase):
     def test_docs_do_not_duplicate_mysql_address_state(self) -> None:
         components = (REPO_ROOT / "docs/components.md").read_text(encoding="utf-8")
         host_vars = load_yaml(
-            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+            "ansible/inventories/topmost01/host_vars/topmost01-mgmt-mysql-shared-01.yml"
         )
 
         self.assertIn("inventory vars", components)

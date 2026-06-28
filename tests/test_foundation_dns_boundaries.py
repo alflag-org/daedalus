@@ -18,42 +18,42 @@ def read_text(path: str) -> str:
 
 class FoundationDnsBoundariesTest(unittest.TestCase):
     def test_workbench_is_vm_and_bastion_remains(self) -> None:
-        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
-        groups = inventory["all"]["children"]["kanagawa01"]["children"]
+        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
+        groups = inventory["all"]["children"]["topmost01"]["children"]
 
-        self.assertIn("kng01-mgmt-workbench-01", groups["platform_vm"]["hosts"])
-        self.assertNotIn("kng01-mgmt-workbench-01", groups["platform_lxc"]["hosts"])
-        self.assertIn("kng01-mgmt-bastion-01", groups["kng01_mgmt"]["hosts"])
-        self.assertIn("kng01-mgmt-bastion-01", groups["svc_bastion"]["hosts"])
+        self.assertIn("topmost01-mgmt-workbench-01", groups["platform_vm"]["hosts"])
+        self.assertNotIn("topmost01-mgmt-workbench-01", groups["platform_lxc"]["hosts"])
+        self.assertIn("topmost01-mgmt-bastion-01", groups["topmost01_mgmt"]["hosts"])
+        self.assertIn("topmost01-mgmt-bastion-01", groups["svc_bastion"]["hosts"])
 
         host_vars = load_yaml(
-            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-workbench-01.yml"
+            "ansible/inventories/topmost01/host_vars/topmost01-mgmt-workbench-01.yml"
         )
         self.assertEqual(host_vars["virtualization_type"], "vm")
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.61")
         self.assertTrue(host_vars["zabbix_agent_enabled"])
 
     def test_dns_hosts_are_grouped_and_metadata_backed(self) -> None:
-        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
-        groups = inventory["all"]["children"]["kanagawa01"]["children"]
+        inventory = load_yaml("ansible/inventories/topmost01/hosts.yml")
+        groups = inventory["all"]["children"]["topmost01"]["children"]
 
         self.assertEqual(
             set(groups["svc_dns_recursive"]["hosts"]),
-            {"kng01-mgmt-recdns-01", "kng01-mgmt-recdns-02"},
+            {"topmost01-mgmt-dns-recursive-01", "topmost01-mgmt-dns-recursive-02"},
         )
         self.assertEqual(
             set(groups["svc_dns_authoritative"]["hosts"]),
-            {"kng01-mgmt-authdns-01", "kng01-mgmt-authdns-02"},
+            {"topmost01-mgmt-dns-authoritative-01", "topmost01-mgmt-dns-authoritative-02"},
         )
 
         expected_addresses = {
-            "kng01-mgmt-recdns-01": "10.10.10.240",
-            "kng01-mgmt-recdns-02": "10.10.10.241",
-            "kng01-mgmt-authdns-01": "10.10.10.242",
-            "kng01-mgmt-authdns-02": "10.10.10.243",
+            "topmost01-mgmt-dns-recursive-01": "10.10.10.240",
+            "topmost01-mgmt-dns-recursive-02": "10.10.10.241",
+            "topmost01-mgmt-dns-authoritative-01": "10.10.10.242",
+            "topmost01-mgmt-dns-authoritative-02": "10.10.10.243",
         }
         for host, address in expected_addresses.items():
-            host_vars = load_yaml(f"ansible/inventories/kanagawa01/host_vars/{host}.yml")
+            host_vars = load_yaml(f"ansible/inventories/topmost01/host_vars/{host}.yml")
             self.assertEqual(host_vars["hostname"], host)
             self.assertEqual(host_vars["network_ipv4_address"], address)
             self.assertIn("network_primary_fqdn", host_vars)
@@ -105,7 +105,7 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
     def test_dns_recursor_renders_internal_stub_zones(self) -> None:
         template = read_text("ansible/roles/dns_recursor/templates/daedalus-recursive.conf.j2")
         group_vars = load_yaml(
-            "ansible/inventories/kanagawa01/group_vars/svc_dns_recursive.yml"
+            "ansible/inventories/topmost01/group_vars/svc_dns_recursive.yml"
         )
 
         self.assertIn("stub-zone:", template)
@@ -129,7 +129,7 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         tasks = load_yaml("ansible/roles/dns_authoritative/tasks/main.yml")
         by_name = {task["name"]: task for task in tasks}
         group_vars = load_yaml(
-            "ansible/inventories/kanagawa01/group_vars/svc_dns_authoritative.yml"
+            "ansible/inventories/topmost01/group_vars/svc_dns_authoritative.yml"
         )
 
         render = by_name["Render authoritative DNS zones from explicit text"]
