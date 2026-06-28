@@ -196,6 +196,12 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         self.assertTrue(purge["purge"])
         self.assertTrue(purge["autoremove"])
 
+        stop = by_name["Stop retired monitoring services"]
+        self.assertIn(
+            "retired_monitoring_cleanup_service.status | default('') != 'not-found'",
+            stop["when"],
+        )
+
         cleanup = by_name["Remove retired monitoring paths"]["ansible.builtin.file"]
         self.assertEqual(cleanup["state"], "absent")
 
