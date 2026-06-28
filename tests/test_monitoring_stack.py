@@ -69,6 +69,35 @@ class MonitoringStackTest(unittest.TestCase):
         self.assertIn("HostDown", alerts)
         self.assertIn("BlackboxEndpointDown", alerts)
 
+    def test_prometheus_and_alertmanager_do_not_fight_over_config_dir(self) -> None:
+        prometheus_tasks = load_yaml(
+            "ansible/roles/components/prometheus/tasks/main.yml"
+        )
+        alertmanager_tasks = load_yaml(
+            "ansible/roles/components/alertmanager/tasks/main.yml"
+        )
+        prometheus_by_name = {task["name"]: task for task in prometheus_tasks}
+        alertmanager_by_name = {task["name"]: task for task in alertmanager_tasks}
+
+        prometheus_config_dir = prometheus_by_name[
+            "Ensure Prometheus config directory exists"
+        ]["ansible.builtin.file"]
+        alertmanager_config_dir = alertmanager_by_name[
+            "Ensure Alertmanager config directory exists"
+        ]["ansible.builtin.file"]
+
+        self.assertEqual(prometheus_config_dir["path"], "{{ prometheus_config_dir }}")
+        self.assertEqual(alertmanager_config_dir["path"], "{{ alertmanager_config_dir }}")
+        self.assertEqual(prometheus_config_dir["owner"], "root")
+        self.assertEqual(prometheus_config_dir["group"], "root")
+        self.assertEqual(alertmanager_config_dir["owner"], "root")
+        self.assertEqual(alertmanager_config_dir["group"], "root")
+
+        prometheus_owned_dirs = prometheus_by_name[
+            "Ensure Prometheus owned directories exist"
+        ]["loop"]
+        self.assertNotIn("{{ prometheus_config_dir }}", prometheus_owned_dirs)
+
     def test_grafana_validation_waits_for_startup(self) -> None:
         defaults = load_yaml("ansible/roles/components/grafana/defaults/main.yml")
         tasks = load_yaml("ansible/roles/components/grafana/tasks/main.yml")
