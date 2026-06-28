@@ -26,12 +26,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
+            vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
                     AnsibleRunner("topmost01"),
-                    limit="topmost01-mgmt-zabbix-01",
+                    limit="topmost01-mgmt-monitor-01",
                     check=True,
                 )
 
@@ -43,12 +43,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
+            vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
                     AnsibleRunner("topmost01"),
-                    extra_vars="zabbix_agent_enabled=true",
+                    extra_vars="node_exporter_enabled=false",
                 )
 
         extra_vars_indexes = [
@@ -56,16 +56,20 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         ]
         self.assertEqual(len(extra_vars_indexes), 2)
         self.assertEqual(cmd[extra_vars_indexes[0] + 1], f"@{vars_path}")
-        self.assertEqual(cmd[extra_vars_indexes[1] + 1], "zabbix_agent_enabled=true")
+        self.assertEqual(cmd[extra_vars_indexes[1] + 1], "node_exporter_enabled=false")
 
     def test_environment_override_takes_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             default_path = Path(home) / ".config" / "daedalus" / "topmost01.yml"
             default_path.parent.mkdir(parents=True)
-            default_path.write_text("mysql_zabbix_password: default\n", encoding="utf-8")
+            default_path.write_text(
+                "monitoring_stack_enabled: false\n", encoding="utf-8"
+            )
 
             override_path = Path(home) / "operator.yml"
-            override_path.write_text("mysql_zabbix_password: override\n", encoding="utf-8")
+            override_path.write_text(
+                "monitoring_stack_enabled: true\n", encoding="utf-8"
+            )
 
             with patch.dict(
                 os.environ,
@@ -108,11 +112,7 @@ class AnsibleRunnerCollectionsTest(unittest.TestCase):
 
     def install_collection(self, ansible_root: Path, version: str = "3.10.0") -> None:
         collection_path = (
-            ansible_root
-            / "collections"
-            / "ansible_collections"
-            / "ansible"
-            / "mysql"
+            ansible_root / "collections" / "ansible_collections" / "ansible" / "mysql"
         )
         collection_path.mkdir(parents=True)
         (collection_path / "MANIFEST.json").write_text(
@@ -287,12 +287,8 @@ class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
         self.assertEqual(requirements, [])
 
     def test_version_requirement_supports_compound_bounds(self) -> None:
-        self.assertTrue(
-            AnsibleRunner._version_satisfies("5.0.1", ">=3.10.0,<6.0.0")
-        )
-        self.assertFalse(
-            AnsibleRunner._version_satisfies("6.0.0", ">=3.10.0,<6.0.0")
-        )
+        self.assertTrue(AnsibleRunner._version_satisfies("5.0.1", ">=3.10.0,<6.0.0"))
+        self.assertFalse(AnsibleRunner._version_satisfies("6.0.0", ">=3.10.0,<6.0.0"))
 
     def test_version_requirement_rejects_unknown_operators(self) -> None:
         self.assertFalse(AnsibleRunner._version_satisfies("5.0.1", "~=5.0"))

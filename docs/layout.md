@@ -29,7 +29,7 @@ ansible/
     systemd_resolved/
     dns_recursor/
     dns_authoritative/
-    zabbix_agent/
+    node_exporter/
     foundation/
     control/
     services/
@@ -60,7 +60,7 @@ Within `ansible/`, the boundaries are:
 - `roles/services/`: service-intent roles selected by `svc_*` inventory groups
 - `roles/components/`: private service implementation roles used by `roles/services/`
 - top-level component roles such as `ssh_server`, `dns_recursor`, and
-  `zabbix_agent`: host-side components selected by inventory flags
+  `node_exporter`: host-side components selected by inventory flags
 
 `roles/common/` and `roles/middleware/` are not active role surfaces. Their
 former responsibilities have either moved into explicit `foundation/*` roles or

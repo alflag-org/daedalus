@@ -36,13 +36,16 @@ role were removed from the normal backend because Atlas is responsible for
 installing Daedalus.
 
 The former `roles/common/*` platform helpers were folded into explicit
-`roles/foundation/*` roles. Zabbix agent convergence now happens through the
-dedicated `zabbix_agent` role from the foundation playbook, not from platform or
-service roles.
+`roles/foundation/*` roles. Host metrics now use the dedicated `node_exporter`
+role from the foundation playbook.
 
 The former `roles/middleware/*` service internals moved under
 `roles/components/*`. `roles/services/*` remains the public service intent
 surface and includes those component roles internally.
+
+topmost01 monitoring moved from the retired Zabbix service path to the
+Prometheus stack documented in [monitoring.md](monitoring.md). Daedalus no
+longer installs Zabbix Agent or converges Zabbix server/frontend roles.
 
 The legacy top-level `group_vars/` tree belonged to the removed root inventory
 and was removed with it. Active site variables now live under

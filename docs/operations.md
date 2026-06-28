@@ -42,45 +42,28 @@ Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` when an operator run needs a
 different file. Explicit `--extra-vars` still works and is applied after the
 auto-loaded file.
 
-For the managed Zabbix server, apply runs require these workload database
-variables:
-
-```yaml
-mysql_zabbix_password: ...
-mysql_zabbix_monitor_password: ...
-```
-
-The local MySQL root account is managed over the Unix socket and does not need
-an operator-provided database password.
-
-Store them in the topmost01 operator vars file:
+The monitoring stack does not need operator-provided secrets for the initial
+Prometheus, Grafana, Alertmanager, and blackbox exporter converge. Target it as
+a normal service group:
 
 ```bash
-mkdir -p /home/ops/.config/daedalus
-umask 077
-cat > /home/ops/.config/daedalus/topmost01.yml <<'EOF'
-mysql_zabbix_password: ...
-mysql_zabbix_monitor_password: ...
-EOF
+atlas run infra check --site topmost01 --limit svc_monitoring
+atlas run infra apply --yes --site topmost01 --limit svc_monitoring
 ```
 
-Then normal targeted runs do not need a repeated `--extra-vars` argument:
+Prometheus reads file-based service discovery targets prepared under
+`/var/lib/prometheus/file_sd`. Daedalus creates the directory and configures
+Prometheus to read it. Hermes owns the generated target files.
 
-```bash
-atlas run infra apply --yes --site topmost01 --limit topmost01-mgmt-zabbix-01
-```
+The foundation converge includes a temporary cleanup role for hosts that
+previously received Zabbix packages from Daedalus. It purges those packages and
+removes their old local state before `node_exporter` becomes the active host
+metrics agent.
 
-The shared MySQL data service at `topmost01-mgmt-mysql-shared-01` currently has no
-workload databases or users declared, so it does not require an operator secret
-by default. When adding a consumer, declare its database/user entries through
-`mysql_server_databases` and `mysql_server_users`, and list any required secret
-variable names in `mysql_server_required_secret_vars`.
+The shared MySQL service is not part of the monitoring migration. It remains a
+generic data service with no workload databases or users declared by default.
+Do not remove it as part of Zabbix cleanup unless that is made as a separate
+explicit infrastructure decision.
 
-If the initial Zabbix schema import fails partway through a fresh provisioning
-run, the next apply stops when it detects the partial database instead of
-treating it as complete. For a fresh host where the Zabbix database can be
-discarded, add this one-time operator var and rerun the targeted apply:
-
-```yaml
-zabbix_server_recreate_partial_schema: true
-```
+Grafana and Prometheus should stay behind MGMT-only access or Cloudflare Access.
+Do not expose either UI directly to the Internet.
