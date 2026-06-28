@@ -108,7 +108,6 @@ atlas_validate_runtime: true
 atlas_validate_shebangs: true
 
 ssh_server_enabled: true
-zabbix_agent_enabled: true
 ```
 
 The default `site` converge should be able to manage the control node after

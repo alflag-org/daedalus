@@ -26,12 +26,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
+            vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
                     AnsibleRunner("kanagawa01"),
-                    limit="kng01-mgmt-zabbix-01",
+                    limit="kng01-mgmt-monitor-01",
                     check=True,
                 )
 
@@ -43,12 +43,12 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             vars_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             vars_path.parent.mkdir(parents=True)
-            vars_path.write_text("mysql_zabbix_password: test\n", encoding="utf-8")
+            vars_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(os.environ, {"HOME": home}, clear=True):
                 cmd = self.capture_playbook_cmd(
                     AnsibleRunner("kanagawa01"),
-                    extra_vars="zabbix_agent_enabled=true",
+                    extra_vars="node_exporter_enabled=false",
                 )
 
         extra_vars_indexes = [
@@ -56,16 +56,16 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
         ]
         self.assertEqual(len(extra_vars_indexes), 2)
         self.assertEqual(cmd[extra_vars_indexes[0] + 1], f"@{vars_path}")
-        self.assertEqual(cmd[extra_vars_indexes[1] + 1], "zabbix_agent_enabled=true")
+        self.assertEqual(cmd[extra_vars_indexes[1] + 1], "node_exporter_enabled=false")
 
     def test_environment_override_takes_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             default_path = Path(home) / ".config" / "daedalus" / "kanagawa01.yml"
             default_path.parent.mkdir(parents=True)
-            default_path.write_text("mysql_zabbix_password: default\n", encoding="utf-8")
+            default_path.write_text("monitoring_stack_enabled: false\n", encoding="utf-8")
 
             override_path = Path(home) / "operator.yml"
-            override_path.write_text("mysql_zabbix_password: override\n", encoding="utf-8")
+            override_path.write_text("monitoring_stack_enabled: true\n", encoding="utf-8")
 
             with patch.dict(
                 os.environ,

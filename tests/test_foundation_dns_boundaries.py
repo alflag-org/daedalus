@@ -6,6 +6,14 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+LEGACY_MONITORING_NAME = "zab" + "bix"
+LEGACY_MONITORING_GROUP = "svc_" + LEGACY_MONITORING_NAME
+LEGACY_MONITORING_HOST = f"kng01-mgmt-{LEGACY_MONITORING_NAME}-01"
+LEGACY_AGENT_ROLE = f"{LEGACY_MONITORING_NAME}_agent"
+LEGACY_SERVICE_ROLE = f"services/{LEGACY_MONITORING_NAME}"
+LEGACY_SERVER_COMPONENT = f"components/{LEGACY_MONITORING_NAME}_server"
+LEGACY_MYSQL_GROUP = "svc_" + "mysql"
+LEGACY_MYSQL_HOST = "kng01-mgmt-" + "mysql-shared-01"
 
 
 def load_yaml(path: str):
@@ -31,7 +39,52 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         )
         self.assertEqual(host_vars["virtualization_type"], "vm")
         self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.61")
-        self.assertTrue(host_vars["zabbix_agent_enabled"])
+
+        site_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/kanagawa01.yml")
+        self.assertTrue(site_vars["node_exporter_enabled"])
+
+    def test_monitor_host_replaces_legacy_monitoring_inventory(self) -> None:
+        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
+        groups = inventory["all"]["children"]["kanagawa01"]["children"]
+
+        monitor = "kng01-mgmt-monitor-01"
+        self.assertEqual(groups["kng01_mgmt"]["hosts"][monitor]["ansible_host"], "10.10.10.250")
+        for group in ("provider_proxmox", "platform_vm", "svc_monitoring"):
+            self.assertIn(monitor, groups[group]["hosts"])
+
+        self.assertNotIn(LEGACY_MONITORING_GROUP, groups)
+        for group in groups.values():
+            self.assertNotIn(LEGACY_MONITORING_HOST, group.get("hosts", {}))
+
+        host_vars = load_yaml(
+            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-monitor-01.yml"
+        )
+        self.assertEqual(host_vars["hostname"], monitor)
+        self.assertEqual(host_vars["network_ipv4_address"], "10.10.10.250")
+        self.assertTrue(host_vars["monitoring_stack_enabled"])
+
+    def test_shared_mysql_service_remains_independent(self) -> None:
+        inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
+        groups = inventory["all"]["children"]["kanagawa01"]["children"]
+
+        self.assertIn(LEGACY_MYSQL_HOST, groups["kng01_mgmt"]["hosts"])
+        self.assertEqual(
+            groups["kng01_mgmt"]["hosts"][LEGACY_MYSQL_HOST]["ansible_host"],
+            "10.10.10.221",
+        )
+        for group in ("provider_proxmox", "platform_vm", LEGACY_MYSQL_GROUP):
+            self.assertIn(LEGACY_MYSQL_HOST, groups[group]["hosts"])
+
+        host_vars = load_yaml(
+            "ansible/inventories/kanagawa01/host_vars/kng01-mgmt-mysql-shared-01.yml"
+        )
+        self.assertEqual(host_vars["purpose"], "shared")
+        self.assertNotIn("zabbix_agent_enabled", host_vars)
+
+        group_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/svc_mysql.yml")
+        self.assertEqual(group_vars["mysql_service_intended_components"], ["mysql-server"])
+        self.assertEqual(group_vars["mysql_server_databases"], [])
+        self.assertEqual(group_vars["mysql_server_users"], [])
 
     def test_dns_hosts_are_grouped_and_metadata_backed(self) -> None:
         inventory = load_yaml("ansible/inventories/kanagawa01/hosts.yml")
@@ -75,32 +128,73 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         ):
             self.assertNotIn(legacy_ref, active_text)
 
-    def test_foundation_applies_zabbix_agent_once(self) -> None:
+    def test_foundation_applies_node_exporter_once(self) -> None:
         foundation = load_yaml("ansible/playbooks/components/foundation.yml")
         role_entries = foundation[0]["roles"]
-        zabbix_entries = [
-            entry for entry in role_entries if entry.get("role") == "zabbix_agent"
+        cleanup_entries = [
+            entry
+            for entry in role_entries
+            if entry.get("role") == "retired_monitoring_cleanup"
+        ]
+        node_exporter_entries = [
+            entry for entry in role_entries if entry.get("role") == "node_exporter"
         ]
 
         self.assertEqual(
-            zabbix_entries,
-            [{"role": "zabbix_agent", "when": "zabbix_agent_enabled | default(false)"}],
+            cleanup_entries,
+            [
+                {
+                    "role": "retired_monitoring_cleanup",
+                    "when": "retired_monitoring_cleanup_enabled | default(false)",
+                }
+            ],
+        )
+        self.assertEqual(
+            node_exporter_entries,
+            [{"role": "node_exporter", "when": "node_exporter_enabled | default(false)"}],
         )
 
-        for path in (
-            "ansible/roles/services/mysql/tasks/main.yml",
-            "ansible/roles/services/zabbix/tasks/main.yml",
+        active_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for root in ("ansible/playbooks", "ansible/roles")
+            for path in (REPO_ROOT / root).rglob("*")
+            if path.is_file()
+        )
+        for removed_ref in (
+            LEGACY_AGENT_ROLE,
+            LEGACY_SERVICE_ROLE,
+            LEGACY_SERVER_COMPONENT,
         ):
-            self.assertNotIn("zabbix_agent", read_text(path))
+            self.assertNotIn(removed_ref, active_text)
+
+    def test_retired_monitoring_cleanup_removes_zabbix_artifacts(self) -> None:
+        site_vars = load_yaml("ansible/inventories/kanagawa01/group_vars/kanagawa01.yml")
+        defaults = load_yaml("ansible/roles/retired_monitoring_cleanup/defaults/main.yml")
+        tasks = load_yaml("ansible/roles/retired_monitoring_cleanup/tasks/main.yml")
+        by_name = {task["name"]: task for task in tasks}
+
+        self.assertTrue(site_vars["retired_monitoring_cleanup_enabled"])
+        self.assertIn("zabbix-agent2", defaults["retired_monitoring_cleanup_packages"])
+        self.assertIn("zabbix-release", defaults["retired_monitoring_cleanup_packages"])
+        self.assertIn("/etc/zabbix", defaults["retired_monitoring_cleanup_paths"])
+
+        purge = by_name["Purge retired monitoring packages"]["ansible.builtin.apt"]
+        self.assertEqual(purge["state"], "absent")
+        self.assertTrue(purge["purge"])
+        self.assertTrue(purge["autoremove"])
+
+        cleanup = by_name["Remove retired monitoring paths"]["ansible.builtin.file"]
+        self.assertEqual(cleanup["state"], "absent")
 
     def test_services_use_private_components(self) -> None:
         mysql_tasks = read_text("ansible/roles/services/mysql/tasks/main.yml")
-        zabbix_tasks = read_text("ansible/roles/services/zabbix/tasks/main.yml")
+        monitoring_tasks = read_text("ansible/roles/services/monitoring/tasks/main.yml")
 
         self.assertIn("components/mysql_server", mysql_tasks)
-        self.assertIn("components/mysql_server", zabbix_tasks)
-        self.assertIn("components/caddy", zabbix_tasks)
-        self.assertIn("components/zabbix_server", zabbix_tasks)
+        self.assertIn("components/prometheus", monitoring_tasks)
+        self.assertIn("components/alertmanager", monitoring_tasks)
+        self.assertIn("components/grafana", monitoring_tasks)
+        self.assertIn("components/blackbox_exporter", monitoring_tasks)
 
     def test_dns_recursor_renders_internal_stub_zones(self) -> None:
         template = read_text("ansible/roles/dns_recursor/templates/daedalus-recursive.conf.j2")
