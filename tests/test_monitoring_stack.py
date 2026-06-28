@@ -69,6 +69,26 @@ class MonitoringStackTest(unittest.TestCase):
         self.assertIn("HostDown", alerts)
         self.assertIn("BlackboxEndpointDown", alerts)
 
+    def test_grafana_validation_waits_for_startup(self) -> None:
+        defaults = load_yaml("ansible/roles/components/grafana/defaults/main.yml")
+        tasks = load_yaml("ansible/roles/components/grafana/tasks/main.yml")
+        task_names = [task["name"] for task in tasks]
+        by_name = {task["name"]: task for task in tasks}
+
+        self.assertGreaterEqual(defaults["grafana_port_validation_timeout"], 60)
+        self.assertLess(
+            task_names.index("Enable and start Grafana"),
+            task_names.index("Apply pending Grafana handlers"),
+        )
+        self.assertLess(
+            task_names.index("Apply pending Grafana handlers"),
+            task_names.index("Validate Grafana port"),
+        )
+
+        validate = by_name["Validate Grafana port"]["ansible.builtin.wait_for"]
+        self.assertEqual(validate["host"], "{{ grafana_port_validation_host }}")
+        self.assertEqual(validate["timeout"], "{{ grafana_port_validation_timeout }}")
+
     def test_inventory_has_no_legacy_monitoring_group_or_host(self) -> None:
         inventory = load_yaml("ansible/inventories/default/hosts.yml")
         groups = inventory["all"]["children"]["default"]["children"]
