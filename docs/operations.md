@@ -22,6 +22,12 @@ Use `--playbook cloudflare` deliberately for host-side Cloudflare components;
 it is not part of the default `site` converge because connector hosts require
 operator-provided tunnel tokens for apply runs.
 
+Daedalus does not use Ansible apt tasks for routine package upgrades. Hosts use
+unattended-upgrades for ongoing package updates; Ansible checks requested
+packages with `dpkg-query` and calls apt only when something is missing or a
+cleanup role must purge an installed package. The default apt cache valid time
+is one day, matching the daily unattended-upgrades package-list refresh.
+
 `apply` is the only mutating action and requires `--yes`. Run `check` or `diff`
 first unless there is a clear operational reason not to.
 

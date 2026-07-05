@@ -29,7 +29,11 @@ class CaddyRoleTest(unittest.TestCase):
 
         prerequisites = by_name["Install Caddy repository prerequisites"]
         self.assertEqual(
-            prerequisites["ansible.builtin.apt"]["name"],
+            prerequisites["ansible.builtin.include_role"]["name"],
+            "apt_state",
+        )
+        self.assertEqual(
+            prerequisites["vars"]["daedalus_apt_packages"],
             ["ca-certificates", "python3-debian"],
         )
 
@@ -44,6 +48,15 @@ class CaddyRoleTest(unittest.TestCase):
         self.assertEqual(
             repository["signed_by"],
             "https://dl.cloudsmith.io/public/caddy/stable/gpg.key",
+        )
+        self.assertEqual(by_name["Add Caddy repository"]["register"], "caddy_repository")
+
+        install = by_name["Install Caddy"]
+        self.assertEqual(install["ansible.builtin.include_role"]["name"], "apt_state")
+        self.assertEqual(install["vars"]["daedalus_apt_packages"], "caddy")
+        self.assertEqual(
+            install["vars"]["daedalus_apt_force_update_cache"],
+            "{{ caddy_repository.changed | default(false) }}",
         )
 
 

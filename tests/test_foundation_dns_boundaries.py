@@ -191,10 +191,15 @@ class FoundationDnsBoundariesTest(unittest.TestCase):
         self.assertIn("zabbix-release", defaults["retired_monitoring_cleanup_packages"])
         self.assertIn("/etc/zabbix", defaults["retired_monitoring_cleanup_paths"])
 
-        purge = by_name["Purge retired monitoring packages"]["ansible.builtin.apt"]
-        self.assertEqual(purge["state"], "absent")
-        self.assertTrue(purge["purge"])
-        self.assertTrue(purge["autoremove"])
+        purge = by_name["Purge retired monitoring packages"]
+        self.assertEqual(purge["ansible.builtin.include_role"]["name"], "apt_state")
+        self.assertEqual(
+            purge["vars"]["daedalus_apt_packages"],
+            "{{ retired_monitoring_cleanup_packages }}",
+        )
+        self.assertEqual(purge["vars"]["daedalus_apt_state"], "absent")
+        self.assertTrue(purge["vars"]["daedalus_apt_purge"])
+        self.assertTrue(purge["vars"]["daedalus_apt_autoremove"])
 
         stop = by_name["Stop retired monitoring services"]
         self.assertIn(
