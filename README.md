@@ -153,6 +153,13 @@ Focused component playbooks can still be requested explicitly with
 explicit host-side component playbook, but it is not imported into the normal
 `site` converge because apply runs require operator-provided tunnel tokens.
 
+Package upgrades are left to unattended-upgrades. Daedalus checks requested apt
+packages with `dpkg-query` first and only invokes apt when a package is missing
+or a cleanup role needs to purge an installed package. When apt is needed,
+`daedalus_apt_cache_valid_time` defaults to one day so the daily unattended
+upgrade cache refresh normally prevents repeated `apt update` work during
+steady-state runs.
+
 Reachability:
 
 ```bash
