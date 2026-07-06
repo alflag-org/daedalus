@@ -79,8 +79,8 @@ work.
 Focused checks from the control node:
 
 ```bash
-atlas run infra check --site default --playbook cloudflare --limit connector01
-atlas run infra check --site default --playbook cloudflare --limit bastion01
+atlas run infra check --playbook cloudflare --limit connector01
+atlas run infra check --playbook cloudflare --limit bastion01
 ```
 
 After apply, validate local host-side state:

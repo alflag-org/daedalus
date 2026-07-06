@@ -4,8 +4,8 @@ Use Atlas or the generated `infra` shim for production runs:
 
 ```bash
 atlas run infra check
-atlas run infra diff --site default --limit cap_control_node
-atlas run infra apply --yes --site default --limit svc_dns_recursive
+atlas run infra diff --limit cap_control_node
+atlas run infra apply --limit svc_dns_recursive --yes
 ```
 
 Use `infra sites` and `infra playbooks` before targeting a non-default
@@ -39,7 +39,7 @@ for the selected inventory from:
 ```
 
 Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` when an operator run needs a
-different file. Explicit `--extra-vars` still works and is applied after the
+different file. Explicit `--extra_vars` still works and is applied after the
 auto-loaded file.
 
 The monitoring stack does not need operator-provided secrets for the initial
@@ -47,8 +47,8 @@ Prometheus, Grafana, Alertmanager, and blackbox exporter converge. Target it as
 a normal service group:
 
 ```bash
-atlas run infra check --site default --limit svc_monitoring
-atlas run infra apply --yes --site default --limit svc_monitoring
+atlas run infra check --limit svc_monitoring
+atlas run infra apply --limit svc_monitoring --yes
 ```
 
 Prometheus reads file-based service discovery targets prepared under
