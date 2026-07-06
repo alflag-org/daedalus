@@ -52,6 +52,17 @@ class CiWorkflowTest(unittest.TestCase):
         ):
             self.assertIn(f"ansible-playbook --syntax-check {playbook}", run_steps)
 
+    def test_ansible_syntax_job_runs_ansible_lint(self) -> None:
+        syntax_job = load_workflow()["jobs"]["ansible-syntax"]
+        run_steps = "\n".join(
+            step["run"] for step in syntax_job["steps"] if "run" in step
+        )
+
+        self.assertIn(
+            "ansible-lint playbooks/site.yml playbooks/bootstrap.yml playbooks/cloudflare.yml",
+            run_steps,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

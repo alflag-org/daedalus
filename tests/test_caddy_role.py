@@ -33,7 +33,7 @@ class CaddyRoleTest(unittest.TestCase):
             "apt_state",
         )
         self.assertEqual(
-            prerequisites["vars"]["daedalus_apt_packages"],
+            prerequisites["vars"]["apt_state_packages"],
             ["ca-certificates", "python3-debian"],
         )
 
@@ -53,9 +53,9 @@ class CaddyRoleTest(unittest.TestCase):
 
         install = by_name["Install Caddy"]
         self.assertEqual(install["ansible.builtin.include_role"]["name"], "apt_state")
-        self.assertEqual(install["vars"]["daedalus_apt_packages"], "caddy")
+        self.assertEqual(install["vars"]["apt_state_packages"], "caddy")
         self.assertEqual(
-            install["vars"]["daedalus_apt_force_update_cache"],
+            install["vars"]["apt_state_force_update_cache"],
             "{{ caddy_repository.changed | default(false) }}",
         )
 

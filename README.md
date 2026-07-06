@@ -156,7 +156,7 @@ explicit host-side component playbook, but it is not imported into the normal
 Package upgrades are left to unattended-upgrades. Daedalus checks requested apt
 packages with `dpkg-query` first and only invokes apt when a package is missing
 or a cleanup role needs to purge an installed package. When apt is needed,
-`daedalus_apt_cache_valid_time` defaults to one day so the daily unattended
+`apt_state_cache_valid_time` defaults to one day so the daily unattended
 upgrade cache refresh normally prevents repeated `apt update` work during
 steady-state runs.
 
@@ -286,7 +286,7 @@ Runtime dependencies are in `requirements.txt`. Development-only tools are in
 `requirements-dev.txt`.
 
 CI runs the same Python test suite on Python 3.12 and 3.13, then performs
-non-mutating Ansible playbook syntax checks. To run the Ansible syntax checks
+non-mutating Ansible playbook syntax and lint checks. To run the Ansible checks
 locally:
 
 ```bash
@@ -295,6 +295,7 @@ ansible-galaxy collection install -r collections/requirements.yml -p collections
 ansible-playbook --syntax-check playbooks/site.yml
 ansible-playbook --syntax-check playbooks/bootstrap.yml
 ansible-playbook --syntax-check playbooks/cloudflare.yml
+ansible-lint playbooks/site.yml playbooks/bootstrap.yml playbooks/cloudflare.yml
 ```
 
 ## Direct Ansible Execution

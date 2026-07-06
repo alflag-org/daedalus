@@ -23,8 +23,8 @@ class AptStateRoleTest(unittest.TestCase):
     def test_apt_defaults_expect_unattended_upgrades_to_keep_cache_fresh(self) -> None:
         site_vars = load_yaml("ansible/inventories/default/group_vars/default.yml")
 
-        self.assertTrue(site_vars["daedalus_apt_update_cache"])
-        self.assertEqual(site_vars["daedalus_apt_cache_valid_time"], 86400)
+        self.assertTrue(site_vars["apt_state_update_cache"])
+        self.assertEqual(site_vars["apt_state_cache_valid_time"], 86400)
 
     def test_roles_do_not_call_apt_directly(self) -> None:
         task_files = sorted((REPO_ROOT / "ansible" / "roles").rglob("tasks/*.yml"))
@@ -53,10 +53,10 @@ class AptStateRoleTest(unittest.TestCase):
         self.assertEqual(apt_install["state"], "present")
         self.assertEqual(
             apt_install["update_cache"],
-            "{{ daedalus_apt_update_cache | default(true) | bool }}",
+            "{{ apt_state_update_cache | default(true) | bool }}",
         )
         self.assertIn(
-            "daedalus_apt_query.rc | default(1) != 0",
+            "apt_state_query.rc | default(1) != 0",
             install["when"],
         )
 
@@ -64,7 +64,7 @@ class AptStateRoleTest(unittest.TestCase):
         apt_remove = remove["ansible.builtin.apt"]
         self.assertEqual(apt_remove["state"], "absent")
         self.assertEqual(
-            "daedalus_apt_query.stdout_lines | default([]) | length > 0",
+            "apt_state_query.stdout_lines | default([]) | length > 0",
             remove["when"][-1],
         )
 

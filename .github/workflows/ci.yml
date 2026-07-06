@@ -71,3 +71,7 @@ jobs:
           ansible-playbook --syntax-check playbooks/site.yml
           ansible-playbook --syntax-check playbooks/bootstrap.yml
           ansible-playbook --syntax-check playbooks/cloudflare.yml
+
+      - name: Run Ansible lint
+        working-directory: ansible
+        run: ansible-lint playbooks/site.yml playbooks/bootstrap.yml playbooks/cloudflare.yml
