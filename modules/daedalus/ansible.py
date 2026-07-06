@@ -80,16 +80,21 @@ class AnsibleRunner:
         self._run(cmd)
 
     def _run(self, cmd: list[str], ensure_collections: bool = False) -> None:
-        env = os.environ.copy()
-        env["ANSIBLE_CONFIG"] = str(ansible_config_path())
-        executable_dir = str(Path(sys.executable).parent)
-        env["PATH"] = os.pathsep.join([executable_dir, env.get("PATH", "")])
+        env = self._ansible_env()
 
         if ensure_collections:
             self._ensure_collections(env)
 
-        print(f"Running: {shlex.join(cmd)}", flush=True)
+        self._print_command(cmd)
         subprocess.run(cmd, check=True, cwd=self.ansible_root, env=env)
+
+    @staticmethod
+    def _ansible_env() -> dict[str, str]:
+        env = os.environ.copy()
+        env["ANSIBLE_CONFIG"] = str(ansible_config_path())
+        executable_dir = str(Path(sys.executable).parent)
+        env["PATH"] = os.pathsep.join([executable_dir, env.get("PATH", "")])
+        return env
 
     def _relative(self, path: Path) -> str:
         return str(path.relative_to(self.ansible_root))
@@ -141,7 +146,7 @@ class AnsibleRunner:
             "-p",
             self._relative(self._collections_path()),
         ]
-        print(f"Running: {shlex.join(cmd)}", flush=True)
+        self._print_command(cmd)
         try:
             subprocess.run(
                 cmd,
@@ -155,6 +160,10 @@ class AnsibleRunner:
                 "Timed out installing Ansible collections from "
                 f"{self._relative(requirements)}"
             ) from exc
+
+    @staticmethod
+    def _print_command(cmd: list[str]) -> None:
+        print(f"Running: {shlex.join(cmd)}", file=sys.stderr, flush=True)
 
     def _missing_collections(self) -> list[str]:
         return [

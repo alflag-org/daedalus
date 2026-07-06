@@ -131,69 +131,97 @@ rebuild the active Atlas runtime there by default.
 Basic shape:
 
 ```bash
-infra <action> [options]
-atlas run infra <action> [options]
+infra <command> [options]
+atlas run infra <command> [options]
 ```
+
+`infra` is a thin Ansible wrapper. It exposes Ansible's site, playbook, limit,
+tags, skip-tags, and extra-vars concepts directly instead of adding
+domain-specific commands. The CLI uses Fire, so examples use the natural long
+option names from the `Infra` method signatures.
 
 Discovery:
 
 ```bash
 infra sites
 infra playbooks
+infra inventory
 infra inventory --site default
 ```
 
-`infra playbooks` only lists the public lifecycle entrypoints:
+`infra playbooks` lists the public playbooks:
 
 - `site`: default steady-state converge
 - `bootstrap`: first converge for a newly added Atlas-managed host
+- `cloudflare`: explicit host-side Cloudflare component run
 
-Focused component playbooks can still be requested explicitly with
-`--playbook` when a top-level playbook exists. `cloudflare` is available as an
-explicit host-side component playbook, but it is not imported into the normal
-`site` converge because apply runs require operator-provided tunnel tokens.
+Focused component playbooks are requested explicitly with `--playbook` when a
+top-level playbook exists. `cloudflare` is not imported into the normal `site`
+converge because apply runs require operator-provided tunnel tokens.
 
 Reachability:
 
 ```bash
 infra ping
-infra ping --site default --limit dns-recursive01
+infra ping --limit dns-recursive01
+infra ping --limit svc_dns_recursive
 ```
 
 Dry-run validation:
 
 ```bash
 infra check
-infra check --site default --limit cap_control_node
-infra check --site default --limit svc_dns_recursive
+infra check --limit svc_dns_recursive
+infra check --playbook cloudflare --limit connector01
+infra check --tags dns --limit dns-recursive01
 ```
 
 Diff preview:
 
 ```bash
 infra diff
-infra diff --site default --limit cap_control_node
-infra diff --site default --limit svc_dns_recursive
+infra diff --limit svc_dns_recursive
+infra diff --playbook cloudflare --limit connector01
 ```
 
 Apply is the mutating action and requires explicit confirmation:
 
 ```bash
 infra apply --yes
-infra apply --yes --site default --limit svc_dns_recursive
+infra apply --limit svc_dns_recursive --yes
+infra apply --playbook bootstrap --limit web02 --yes
 ```
 
-`check`, `diff`, and `apply` support these limited Ansible pass-through options:
+`inventory` supports:
 
 ```text
---limit
---tags
---skip-tags
---extra-vars
+--site
 ```
 
-Before invoking Ansible, `infra` prints the exact command it will run. Unknown
-sites and playbooks fail before Ansible starts.
+`ping` supports:
+
+```text
+--site
+--limit
+```
+
+`check`, `diff`, and `apply` support these Ansible pass-through options:
+
+```text
+--site
+--playbook
+--limit
+--tags
+--skip_tags
+--extra_vars
+```
+
+The default site is `default`. The default playbook for `check`, `diff`, and
+`apply` is `site`.
+
+Before invoking Ansible, `infra` prints the exact command it will run to
+stderr. Command output remains on stdout. Unknown sites and playbooks fail
+before Ansible starts.
 
 ## Inventory Model
 
@@ -259,7 +287,7 @@ inventory when it exists:
 With the default inventory selector, the path is
 `~/.config/daedalus/default.yml`.
 Set `DAEDALUS_OPERATOR_VARS=/path/to/vars.yml` to use a different file.
-Explicit `--extra-vars` values are still supported and are passed after the
+Explicit `--extra_vars` values are still supported and are passed after the
 auto-loaded file.
 
 ## Local Development
@@ -313,21 +341,21 @@ playbook, and limit.
 Bootstrap a cloud-init VM with:
 
 ```bash
-infra apply --yes --site default --playbook bootstrap --limit <new-host>
+infra apply --playbook bootstrap --limit <new-host> --yes
 ```
 
 Then run the steady-state converge for that host:
 
 ```bash
-infra apply --yes --site default --limit <new-host>
+infra apply --limit <new-host> --yes
 ```
 
 Bootstrap a root-only LXC with the same playbook, but override the first login
 user for that one run:
 
 ```bash
-infra apply --yes --site default --playbook bootstrap --limit <new-host> \
-  --extra-vars 'ansible_user=root ansible_become=false'
+infra apply --playbook bootstrap --limit <new-host> --yes \
+  --extra_vars 'ansible_user=root ansible_become=false'
 ```
 
 After that first run, use the normal `site` converge with the standard `ops`
@@ -353,7 +381,7 @@ python -m pip install -e .
 infra sites
 infra playbooks
 infra inventory
-infra check --site default --limit svc_dns_recursive
+infra check --limit svc_dns_recursive
 ```
 
 For documentation-only changes, inspect the rendered Markdown and confirm that

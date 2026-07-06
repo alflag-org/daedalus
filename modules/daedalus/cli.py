@@ -1,4 +1,5 @@
 import subprocess
+from collections.abc import Callable
 
 import fire
 
@@ -7,6 +8,15 @@ from .paths import DEFAULT_PLAYBOOK, DEFAULT_SITE, public_playbooks, sites
 
 
 class Infra:
+    def sites(self) -> None:
+        self._print_lines(sites())
+
+    def playbooks(self) -> None:
+        self._print_lines(public_playbooks())
+
+    def inventory(self, site: str = DEFAULT_SITE) -> None:
+        self._run(lambda: AnsibleRunner(site=site).inventory_graph())
+
     def ping(self, site: str = DEFAULT_SITE, limit: str | None = None) -> None:
         self._run(lambda: AnsibleRunner(site=site).adhoc(module="ping", limit=limit))
 
@@ -19,16 +29,15 @@ class Infra:
         skip_tags: str | None = None,
         extra_vars: str | None = None,
     ) -> None:
-        self._run(
-            lambda: AnsibleRunner(site=site).playbook(
-                playbook=playbook,
-                limit=limit,
-                tags=tags,
-                skip_tags=skip_tags,
-                extra_vars=extra_vars,
-                check=True,
-                diff=False,
-            )
+        self._playbook(
+            site=site,
+            playbook=playbook,
+            limit=limit,
+            tags=tags,
+            skip_tags=skip_tags,
+            extra_vars=extra_vars,
+            check=True,
+            diff=False,
         )
 
     def diff(
@@ -40,16 +49,15 @@ class Infra:
         skip_tags: str | None = None,
         extra_vars: str | None = None,
     ) -> None:
-        self._run(
-            lambda: AnsibleRunner(site=site).playbook(
-                playbook=playbook,
-                limit=limit,
-                tags=tags,
-                skip_tags=skip_tags,
-                extra_vars=extra_vars,
-                check=True,
-                diff=True,
-            )
+        self._playbook(
+            site=site,
+            playbook=playbook,
+            limit=limit,
+            tags=tags,
+            skip_tags=skip_tags,
+            extra_vars=extra_vars,
+            check=True,
+            diff=True,
         )
 
     def apply(
@@ -65,6 +73,29 @@ class Infra:
         if not yes:
             raise SystemExit("Error: apply requires --yes")
 
+        self._playbook(
+            site=site,
+            playbook=playbook,
+            limit=limit,
+            tags=tags,
+            skip_tags=skip_tags,
+            extra_vars=extra_vars,
+            check=False,
+            diff=False,
+        )
+
+    def _playbook(
+        self,
+        *,
+        site: str,
+        playbook: str,
+        limit: str | None,
+        tags: str | None,
+        skip_tags: str | None,
+        extra_vars: str | None,
+        check: bool,
+        diff: bool,
+    ) -> None:
         self._run(
             lambda: AnsibleRunner(site=site).playbook(
                 playbook=playbook,
@@ -72,24 +103,18 @@ class Infra:
                 tags=tags,
                 skip_tags=skip_tags,
                 extra_vars=extra_vars,
-                check=False,
-                diff=False,
+                check=check,
+                diff=diff,
             )
         )
 
-    def inventory(self, site: str = DEFAULT_SITE) -> None:
-        self._run(lambda: AnsibleRunner(site=site).inventory_graph())
-
-    def sites(self) -> None:
-        for site in sites():
-            print(site)
-
-    def playbooks(self) -> None:
-        for playbook in public_playbooks():
-            print(playbook)
+    @staticmethod
+    def _print_lines(values: list[str]) -> None:
+        for value in values:
+            print(value)
 
     @staticmethod
-    def _run(action) -> None:
+    def _run(action: Callable[[], None]) -> None:
         try:
             action()
         except RuntimeError as exc:
