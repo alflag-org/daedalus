@@ -9,7 +9,7 @@ component flags. Roles implement host-side state only.
 The steady-state entrypoint is:
 
 ```bash
-atlas run infra check --site default
+atlas run infra check
 ```
 
 Focused runs use the normal `site` playbook plus `--limit`. `cloudflare` is the
@@ -17,9 +17,9 @@ only explicit host-side component playbook outside normal `site` because apply
 runs require operator-provided tunnel tokens:
 
 ```bash
-atlas run infra check --site default --limit svc_dns_recursive
-atlas run infra check --site default --limit cap_control_node
-atlas run infra check --site default --playbook cloudflare
+atlas run infra check --limit svc_dns_recursive
+atlas run infra check --limit cap_control_node
+atlas run infra check --playbook cloudflare
 ```
 
 `cloudflare` is intentionally explicit and is not imported into `site.yml`.
@@ -53,7 +53,7 @@ those values into docs. Use the inventory graph and host/group vars when current
 state is needed:
 
 ```bash
-infra inventory --site default
+infra inventory
 ```
 
 The docs describe role boundaries and operating contracts. Host additions,
@@ -117,18 +117,18 @@ Daedalus component after the host-side state is stable.
 On the control node, use:
 
 ```bash
-atlas run infra inventory --site default
-atlas run infra check --site default --limit dns-recursive01
-atlas run infra check --site default --playbook cloudflare --limit connector01
-atlas run infra check --site default --playbook cloudflare --limit bastion01
-atlas run infra check --site default --limit control01
-atlas run infra ping --site default --limit monitor01
-atlas run infra check --site default --playbook bootstrap --limit monitor01
-atlas run infra check --site default --limit svc_monitoring
-atlas run infra check --site default --limit svc_mysql
-atlas run infra ping --site default --limit web01
-atlas run infra check --site default --limit web01
-atlas run infra check --site default --playbook cloudflare --limit web01
+atlas run infra inventory
+atlas run infra check --limit dns-recursive01
+atlas run infra check --playbook cloudflare --limit connector01
+atlas run infra check --playbook cloudflare --limit bastion01
+atlas run infra check --limit control01
+atlas run infra ping --limit monitor01
+atlas run infra check --playbook bootstrap --limit monitor01
+atlas run infra check --limit svc_monitoring
+atlas run infra check --limit svc_mysql
+atlas run infra ping --limit web01
+atlas run infra check --limit web01
+atlas run infra check --playbook cloudflare --limit web01
 ```
 
 Local development machines may lack Atlas runtime, operator secret material, or

@@ -73,15 +73,15 @@ hosts: later runs can switch to `ansible_user: ops` with `become: true`.
 For a brand-new VM that already has `ops`, use the shared bootstrap playbook:
 
 ```bash
-infra apply --yes --site default --playbook bootstrap --limit <new-host>
+infra apply --playbook bootstrap --limit <new-host> --yes
 ```
 
 For a brand-new root-only LXC, use the same bootstrap playbook and override the
 first login user for that run:
 
 ```bash
-infra apply --yes --site default --playbook bootstrap --limit <new-host> \
-  --extra-vars 'ansible_user=root ansible_become=false'
+infra apply --playbook bootstrap --limit <new-host> --yes \
+  --extra_vars 'ansible_user=root ansible_become=false'
 ```
 
 The playbook branches inside `foundation/bootstrap`: VM and LXC hosts share one
@@ -172,14 +172,14 @@ atlas_registries:
 Use the wrapper through Atlas on the control node:
 
 ```bash
-atlas run infra inventory --site default
-atlas run infra check --site default --limit cap_control_node
-atlas run infra diff --site default --limit cap_control_node
+atlas run infra inventory
+atlas run infra check --limit cap_control_node
+atlas run infra diff --limit cap_control_node
 ```
 
 For DNS LXC reachability and the service-scoped converge path:
 
 ```bash
-atlas run infra ping --site default --limit dns-recursive01
-atlas run infra check --site default --limit svc_dns_recursive
+atlas run infra ping --limit dns-recursive01
+atlas run infra check --limit svc_dns_recursive
 ```

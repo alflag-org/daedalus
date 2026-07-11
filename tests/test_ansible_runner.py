@@ -2,13 +2,12 @@ import os
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 from daedalus.ansible import AnsibleRunner, CollectionRequirement
-from daedalus.cli import Infra
 
 
 class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
@@ -94,6 +93,99 @@ class AnsibleRunnerOperatorVarsTest(unittest.TestCase):
                 f"Operator vars file not found: {missing_path}",
             ):
                 AnsibleRunner("default").playbook("site")
+
+
+class AnsibleRunnerCommandTest(unittest.TestCase):
+    def capture_playbook_cmd(self, **kwargs) -> list[str]:
+        captured: dict[str, list[str]] = {}
+        runner = AnsibleRunner("default")
+
+        def fake_run(cmd: list[str], ensure_collections: bool = False) -> None:
+            captured["cmd"] = cmd
+
+        runner._run = fake_run  # type: ignore[method-assign]
+        with tempfile.TemporaryDirectory() as home:
+            with patch.dict(os.environ, {"HOME": home}, clear=True):
+                runner.playbook(**kwargs)
+        return captured["cmd"]
+
+    def test_check_command_passes_limit_and_check_to_ansible_playbook(self) -> None:
+        cmd = self.capture_playbook_cmd(
+            playbook="site",
+            limit="svc_dns_recursive",
+            check=True,
+            diff=False,
+        )
+
+        self.assertEqual(
+            cmd,
+            [
+                "ansible-playbook",
+                "-i",
+                "inventories/default/hosts.yml",
+                "playbooks/site.yml",
+                "--limit",
+                "svc_dns_recursive",
+                "--check",
+            ],
+        )
+
+    def test_diff_command_passes_limit_check_and_diff_to_ansible_playbook(self) -> None:
+        cmd = self.capture_playbook_cmd(
+            playbook="site",
+            limit="svc_dns_recursive",
+            check=True,
+            diff=True,
+        )
+
+        self.assertEqual(
+            cmd,
+            [
+                "ansible-playbook",
+                "-i",
+                "inventories/default/hosts.yml",
+                "playbooks/site.yml",
+                "--limit",
+                "svc_dns_recursive",
+                "--check",
+                "--diff",
+            ],
+        )
+
+    def test_apply_bootstrap_command_uses_bootstrap_playbook_with_limit(self) -> None:
+        cmd = self.capture_playbook_cmd(
+            playbook="bootstrap",
+            limit="web02",
+            check=False,
+            diff=False,
+        )
+
+        self.assertEqual(
+            cmd,
+            [
+                "ansible-playbook",
+                "-i",
+                "inventories/default/hosts.yml",
+                "playbooks/bootstrap.yml",
+                "--limit",
+                "web02",
+            ],
+        )
+
+    def test_run_prints_running_line_to_stderr(self) -> None:
+        stdout = StringIO()
+        stderr = StringIO()
+        runner = AnsibleRunner("default")
+
+        with (
+            patch("daedalus.ansible.subprocess.run"),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            runner._run(["ansible", "all", "-m", "ping"])
+
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Running: ansible all -m ping\n", stderr.getvalue())
 
 
 class AnsibleRunnerCollectionsTest(unittest.TestCase):
@@ -292,19 +384,6 @@ class AnsibleRunnerCollectionRequirementTest(unittest.TestCase):
 
     def test_version_requirement_rejects_unknown_operators(self) -> None:
         self.assertFalse(AnsibleRunner._version_satisfies("5.0.1", "~=5.0"))
-
-
-class InfraPlaybooksTest(unittest.TestCase):
-    def test_playbooks_lists_public_entrypoints(self) -> None:
-        output = StringIO()
-
-        with redirect_stdout(output):
-            Infra().playbooks()
-
-        self.assertEqual(
-            output.getvalue().splitlines(),
-            ["site", "bootstrap", "cloudflare"],
-        )
 
 
 if __name__ == "__main__":

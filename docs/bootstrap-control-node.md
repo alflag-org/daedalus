@@ -14,9 +14,9 @@ itself before it can run.
 `control01` runs operator-triggered commands such as:
 
 ```bash
-atlas run infra inventory --site default
-atlas run infra ping --site default --limit dns-recursive01
-atlas run infra check --site default --limit cap_control_node
+atlas run infra inventory
+atlas run infra ping --limit dns-recursive01
+atlas run infra check --limit cap_control_node
 ```
 
 Daedalus may validate this host and manage non-dangerous configuration on it,
@@ -75,11 +75,11 @@ atlas status
 atlas runtime status
 atlas scripts list --verbose
 ansible-inventory --version
-atlas run infra inventory --site default
-atlas run infra ping --site default --limit dns-recursive01
-atlas run infra check --site default --limit svc_dns_recursive
-atlas run infra check --site default --limit cap_control_node
-atlas run infra diff --site default --limit cap_control_node
+atlas run infra inventory
+atlas run infra ping --limit dns-recursive01
+atlas run infra check --limit svc_dns_recursive
+atlas run infra check --limit cap_control_node
+atlas run infra diff --limit cap_control_node
 ```
 
 The first control node should be assigned to these inventory groups:

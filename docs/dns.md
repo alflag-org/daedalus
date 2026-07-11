@@ -94,10 +94,10 @@ for converging DNS desired state.
 From the control node:
 
 ```bash
-infra check --site default --limit svc_dns_recursive
-infra diff --site default --limit svc_dns_recursive
-infra check --site default --limit svc_dns_authoritative
-infra diff --site default --limit svc_dns_authoritative
+infra check --limit svc_dns_recursive
+infra diff --limit svc_dns_recursive
+infra check --limit svc_dns_authoritative
+infra diff --limit svc_dns_authoritative
 ```
 
 On a recursive DNS host:
