@@ -5,6 +5,8 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+CHECKOUT_ACTION = "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
+MISE_ACTION = "jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d"
 
 
 def load_workflow() -> dict:
@@ -25,7 +27,7 @@ class CiWorkflowTest(unittest.TestCase):
 
         self.assertEqual(
             test_job["strategy"]["matrix"]["python-version"],
-            ["3.12", "3.13"],
+            ["3.12.13", "3.13.14"],
         )
 
         run_steps = "\n".join(
@@ -34,6 +36,18 @@ class CiWorkflowTest(unittest.TestCase):
         self.assertIn("python -m pip install -r requirements-dev.txt", run_steps)
         self.assertIn("python -m pip install -e .", run_steps)
         self.assertIn("pytest -q", run_steps)
+        self.assertIn("git diff --exit-code -- mise.toml mise.lock", run_steps)
+
+    def test_jobs_install_tools_with_pinned_actions(self) -> None:
+        jobs = load_workflow()["jobs"]
+
+        for job in jobs.values():
+            actions = [step["uses"] for step in job["steps"] if "uses" in step]
+            self.assertIn(CHECKOUT_ACTION, actions)
+            self.assertIn(MISE_ACTION, actions)
+            self.assertFalse(
+                any(action.startswith("actions/setup-python@") for action in actions)
+            )
 
     def test_ansible_syntax_job_checks_public_playbooks(self) -> None:
         syntax_job = load_workflow()["jobs"]["ansible-syntax"]
@@ -60,6 +74,10 @@ class CiWorkflowTest(unittest.TestCase):
 
         self.assertIn(
             "ansible-lint playbooks/site.yml playbooks/bootstrap.yml playbooks/cloudflare.yml",
+            run_steps,
+        )
+        self.assertIn(
+            'actionlint -shellcheck="$(command -v shellcheck)" .github/workflows/*.yml',
             run_steps,
         )
 
