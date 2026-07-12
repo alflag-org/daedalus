@@ -299,9 +299,15 @@ auto-loaded file.
 
 ## Local Development
 
-Install the Python package in editable mode when working without Atlas:
+mise manages the Python interpreter and external tools used for local development
+and CI. Python package dependencies remain in `pyproject.toml` and the requirements
+files. mise does not replace the Atlas-managed production runtime or install
+Daedalus into that runtime.
+
+Install the toolchain and Python package in editable mode when working without Atlas:
 
 ```bash
+mise install
 python -m pip install -r requirements-dev.txt
 python -m pip install -e .
 python -m pytest -q
